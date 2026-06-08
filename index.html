@@ -362,14 +362,16 @@ function App(){
             {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/120"} alt={mcName} style={{height:"120px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
               <div><div style={{fontWeight:700,color:T.accent,fontSize:"16px"}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim,marginTop:"2px"}}>Flip Tracker</div></div>
             </>)}</div>
-          <div className="stat-grid" style={{flex:1}}>
+          <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
-            <Stat v={stats.count} l="Completed" c={T.text} /><Stat v={active.length} l="Active" c="#60a5fa" />
-            <Stat v={stats.wins} l="Wins" c="#4ade80" /><Stat v={stats.losses} l="Losses" c="#f87171" />
-            <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" />
-            <Stat v={streak+"🔥"} l="Streak" c="#fb923c" />
             <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" />
-            {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}</div></div>
+            {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}
+            <Stat v={active.length} l="Active" c="#60a5fa" />
+            <Stat v={stats.count} l="Completed" c={T.text} />
+            <Stat v={streak+"🔥"} l="Win Streak" c="#fb923c" />
+            <Stat v={stats.wins} l="Wins" c="#4ade80" />
+            <Stat v={stats.losses} l="Losses" c="#f87171" />
+            <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" /></div></div>
 
         {chartData.length>1&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}><div style={S.cT}>Cumulative Profit</div><div style={{display:"flex",gap:"6px",alignItems:"center"}}><span style={{fontSize:"9px",color:T.textDim}}>From:</span><input type="date" style={{...S.inp,width:"120px",padding:"3px 6px",fontSize:"10px"}} value={chartStartDate} onChange={e=>setChartStartDate(e.target.value)} />{chartStartDate&&<button onClick={()=>setChartStartDate("")} style={{...S.bs,color:"#f87171",fontSize:"9px"}}>Clear</button>}</div></div>
           <div style={{height:"170px"}}><ChartBox type="line" labels={chartData.map(d=>fdate(d.date))} datasets={[{label:"Running Total",data:chartData.map(d=>d.total),borderColor:"#a78bfa",backgroundColor:"#a78bfa20",fill:true,tension:0.3,pointRadius:0,borderWidth:2}]} /></div></div>}
