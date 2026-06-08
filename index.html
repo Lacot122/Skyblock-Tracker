@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skyblock Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#080810;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;font-size:13px}
+#loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px}
+.spin{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#fcd34d;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}#error{display:none;padding:40px;text-align:center;color:#f87171}
+input:focus{border-color:#fcd34d!important;outline:none}input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}input[type=number]{-moz-appearance:textfield}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#080810}::-webkit-scrollbar-thumb{background:#2d2d5e;border-radius:3px}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}.fi{animation:fi .2s ease-out}
+@keyframes toast-in{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@keyframes toast-out{from{transform:translateY(0)}to{transform:translateY(-100%)}}
+.toast{position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;padding:8px 16px;font-family:inherit;font-size:13px;font-weight:700;animation:toast-in .3s ease-out}
+.toast-exit{animation:toast-out .3s ease-in forwards}
+.ah-panel{position:fixed;right:0;top:0;bottom:0;width:300px;background:#0f1225;border-left:1px solid #1e293b;z-index:100;overflow-y:auto;padding:12px;animation:fi .2s ease-out}
+@media(max-width:700px){.ah-panel{width:100%}}
+.stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;align-content:center}
+.stat-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;align-content:center}
+@media(max-width:700px){@keyframes toast-in{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@keyframes toast-out{from{transform:translateY(0)}to{transform:translateY(-100%)}}
+.toast{position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;padding:8px 16px;font-family:inherit;font-size:13px;font-weight:700;animation:toast-in .3s ease-out}
+.toast-exit{animation:toast-out .3s ease-in forwards}
+.ah-panel{position:fixed;right:0;top:0;bottom:0;width:300px;background:#0f1225;border-left:1px solid #1e293b;z-index:100;overflow-y:auto;padding:12px;animation:fi .2s ease-out}
+@media(max-width:700px){.ah-panel{width:100%}}
+.stat-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div id="root"><div id="loading"><div class="spin"></div><div style="color:#fcd34d;font-weight:700;font-size:16px">SKYBLOCK TRACKER</div></div></div>
+<div id="error"><div style="font-size:18px;font-weight:700;margin-bottom:8px">Failed to load</div><div id="error-msg" style="font-size:12px;color:#94a3b8"></div></div>
+<script>window._err=function(n){document.getElementById('loading').style.display='none';document.getElementById('error').style.display='block';document.getElementById('error-msg').textContent='Failed: '+n}</script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" onerror="_err('react')"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" onerror="_err('react-dom')"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js" onerror="_err('babel')"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" onerror="_err('chartjs')"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="_err('supabase')"></script>
+<script type="text/babel">
+try{
+const{useState,useEffect,useCallback,useMemo,useRef}=React;
+const SB_URL="https://pmucpszncbuntwbwlkbz.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdWNwc3puY2J1bnR3Yndsa2J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTAwMTksImV4cCI6MjA5NjQ4NjAxOX0.oE-d1ysv-R1aoM-P4mklSFW9KcaqefhlLywCrEUqpxo";
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const SK="skyblock-tracker-v3",DEF={flips:[],investments:[],taxRate:0.035,bzTaxRate:0.01};
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function today(){return new Date().toISOString().split("T")[0]}
+function fm(n,d=2){if(n==null||isNaN(n))return"—";const a=Math.abs(n),neg=n<0;let s;if(a>=1000)s=(a/1000).toFixed(3)+"b";else s=a.toFixed(d)+"m";return neg?"-"+s:s}
+function fm4(n){if(n==null||isNaN(n))return"—";const a=Math.abs(n),neg=n<0;let s;if(a>=1000)s=(a/1000).toFixed(4)+"b";else s=a.toFixed(2)+"m";return neg?"-"+s:s}
+function fmS(n){if(n==null||isNaN(n))return"—";const a=Math.abs(n),neg=n<0;let s;if(a>=1000)s=(a/1000).toFixed(2)+"b";else if(a>=100)s=a.toFixed(1)+"m";else s=a.toFixed(2)+"m";return neg?"-"+s:s}
+function fdate(d){if(!d)return"";const dt=new Date(d);if(isNaN(dt))return"";return String(dt.getDate()).padStart(2,"0")+"/"+String(dt.getMonth()+1).padStart(2,"0")}
+function fdateF(d){if(!d)return"";const dt=new Date(d);if(isNaN(dt))return"";return String(dt.getDate()).padStart(2,"0")+"/"+String(dt.getMonth()+1).padStart(2,"0")+"/"+dt.getFullYear()}
+function idate(d){if(!d)return"";const dt=new Date(d);if(isNaN(dt))return"";return dt.toISOString().split("T")[0]}
+function getMonthKey(d){if(!d)return null;const dt=new Date(d);if(isNaN(dt))return null;return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")}
+function getMonthLabel(k){const[y,m]=k.split("-");const names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return names[parseInt(m)-1]+" "+y}
+
+const RANKS=[{min:1,max:1,color:"#b9f2ff",icon:"💎"},{min:2,max:3,color:"#fcd34d",icon:"🥇"},{min:4,max:6,color:"#c0c0c0",icon:"🥈"},{min:7,max:10,color:"#cd7f32",icon:"🥉"}];
+function getRank(i){const p=i+1;return RANKS.find(r=>p>=r.min&&p<=r.max)||RANKS[3]}
+
+function ChartBox({type,labels,datasets,height}){
+  const ref=useRef(null),chartRef=useRef(null);
+  useEffect(()=>{if(!ref.current||!window.Chart)return;if(chartRef.current)chartRef.current.destroy();
+    chartRef.current=new window.Chart(ref.current.getContext("2d"),{type,data:{labels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:"#1a1a35",borderColor:"#2d2d5e",borderWidth:1,titleColor:"#94a3b8",bodyColor:"#e2e8f0",
+          titleFont:{family:"'Inter',sans-serif",size:10},bodyFont:{family:"'Inter',sans-serif",size:11},
+          callbacks:{label:function(c){return c.dataset.label+": "+fmS(c.raw)}}}},
+        scales:{x:{ticks:{color:"#475569",font:{size:9,family:"'Inter',sans-serif"}},grid:{color:"#1e293b33"}},
+          y:{ticks:{color:"#475569",font:{size:9,family:"'Inter',sans-serif"},callback:v=>fmS(v)},grid:{color:"#1e293b33"}}}}});
+    return()=>{if(chartRef.current)chartRef.current.destroy()};
+  },[JSON.stringify(labels),JSON.stringify(datasets.map(d=>d.data)),type]);
+  return React.createElement("canvas",{ref,style:{height:height||160,width:"100%"}});
+}
+
+function App(){
+  // Auth
+  const[authState,setAuthState]=useState("loading");
+  const[user,setUser]=useState(null);
+  const[discordInfo,setDiscordInfo]=useState(null);
+  const[mcUuid,setMcUuid]=useState("");
+  const[verifyInput,setVerifyInput]=useState("");
+  const[verifyError,setVerifyError]=useState("");
+  const[verifyLoading,setVerifyLoading]=useState(false);
+  const[toast,setToast]=useState(null);
+  const[ahAuctions,setAhAuctions]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);
+  const[ahLoading,setAhLoading]=useState(false);
+  const[ahOpen,setAhOpen]=useState(false);
+  const[ahFlipId,setAhFlipId]=useState(null);
+  const[defaultTax,setDefaultTax]=useState("auction");
+  const saveTimer=useRef(null);
+  const[data,setData]=useState(DEF),[tab,setTab]=useState("home"),[loaded,setLoaded]=useState(false);
+  const[mcName,setMcName]=useState(""),[mcInput,setMcInput]=useState("");
+  const[addForm,setAddForm]=useState({item:"",buy:"",sell:"",date:today(),notes:""});
+  const[addSaleId,setAddSaleId]=useState(null),[addSaleAmt,setAddSaleAmt]=useState(""),[addSaleType,setAddSaleType]=useState("auction");
+  const[editId,setEditId]=useState(null),[editForm,setEditForm]=useState({}),[expandedId,setExpandedId]=useState(null);
+  const[editSaleId,setEditSaleId]=useState(null),[editSaleAmt,setEditSaleAmt]=useState("");
+  const[search,setSearch]=useState(""),[calcSell,setCalcSell]=useState(""),[calcTarget,setCalcTarget]=useState("");
+  const[invForm,setInvForm]=useState({skin:"",amount:"",qty:"1",date:today()});
+  const[invAddTo,setInvAddTo]=useState(null),[invAddAmt,setInvAddAmt]=useState(""),[invAddQty,setInvAddQty]=useState("1");
+  const[invSaleId,setInvSaleId]=useState(null),[invSaleAmt,setInvSaleAmt]=useState(""),[invSaleType,setInvSaleType]=useState("auction");
+  const[relistId,setRelistId]=useState(null),[relistAmt,setRelistAmt]=useState("");
+  const[relistFlipId,setRelistFlipId]=useState(null),[relistFlipAmt,setRelistFlipAmt]=useState("");
+  const[invSaleQty,setInvSaleQty]=useState("1");
+  const[importStatus,setImportStatus]=useState(""),[lastSaved,setLastSaved]=useState(null);
+  const[chartMonth,setChartMonth]=useState("all"),[filterDate,setFilterDate]=useState(""),[theme,setTheme]=useState("dark");
+  const[resetConfirm,setResetConfirm]=useState(false),[resetCountdown,setResetCountdown]=useState(5);
+    
+  useEffect(()=>{
+    sb.auth.getSession().then(({data:{session}})=>{
+      if(session){handleSession(session)}
+      else{setAuthState("login");document.getElementById('loading').style.display='none'}
+    });
+    const{data:{subscription}}=sb.auth.onAuthStateChange((ev,session)=>{
+      if(ev==="SIGNED_IN"&&session)handleSession(session);
+      else if(ev==="SIGNED_OUT"){setUser(null);setAuthState("login")}
+    });
+    return()=>subscription.unsubscribe();
+  },[]);
+
+  const handleSession=async(session)=>{
+    const u=session.user;setUser(u);
+    const meta=u.user_metadata||{};
+    setDiscordInfo({username:meta.full_name||meta.name||"",avatar:meta.avatar_url||"",email:meta.email||""});
+    const{data:row}=await sb.from("tracker_data").select("*").eq("id",u.id).single();
+    if(row){
+      setData({...DEF,...(row.data||{})});
+      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app")}
+      else{setAuthState("verify")}
+    }else{
+      await sb.from("tracker_data").insert({id:u.id,minecraft_username:"",data:DEF});
+      setAuthState("verify");
+    }
+    document.getElementById('loading').style.display='none';
+  };
+  const signIn=async()=>{await sb.auth.signInWithOAuth({provider:"discord",options:{redirectTo:window.location.origin}})};
+  const signOut=async()=>{await sb.auth.signOut();setUser(null);setData(DEF);setMcName("");setAuthState("login")};
+  const verifyMc=async()=>{
+    setVerifyLoading(true);setVerifyError("");
+    try{
+      const res=await fetch("/api/hypixel-verify?username="+encodeURIComponent(verifyInput)+"&discord_id="+user.id+"&discord_username="+encodeURIComponent(discordInfo?.username||""));
+      const d=await res.json();
+      if(d.verified){setMcName(d.username);setMcUuid(d.uuid);await sb.from("tracker_data").update({minecraft_username:d.username,data:{...data,mcUuid:d.uuid}}).eq("id",user.id);setAuthState("app")}
+      else{setVerifyError(d.error||"Verification failed")}
+    }catch(e){setVerifyError("Network error: "+e.message)}
+    setVerifyLoading(false);
+  };
+  const save=useCallback((d)=>{
+    setData(d);
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(async()=>{
+      if(!user)return;
+      await sb.from("tracker_data").update({data:{...d,mcUuid,theme,defaultTax},updated_at:new Date().toISOString()}).eq("id",user.id);
+      setLastSaved(new Date());
+    },1000);
+  },[user,mcUuid,theme,defaultTax]);
+  useEffect(()=>{if(user&&authState==="app"){if(saveTimer.current)clearTimeout(saveTimer.current);saveTimer.current=setTimeout(async()=>{await sb.from("tracker_data").update({data:{...data,mcUuid,theme,defaultTax}}).eq("id",user.id)},1000)}},[theme,defaultTax]);
+  useEffect(()=>{if(!resetConfirm)return;if(resetCountdown<=0)return;const t=setTimeout(()=>setResetCountdown(c=>c-1),1000);return()=>clearTimeout(t)},[resetConfirm,resetCountdown]);
+  const showToast=(profit)=>{setToast({profit,exit:false});setTimeout(()=>setToast(t=>t?{...t,exit:true}:null),2000);setTimeout(()=>setToast(null),2300)};
+
+  // AH
+  const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions(d.sold||[]);setAhFullData(d)}catch(e){setAhAuctions([])}setAhLoading(false)};
+  const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData(d)}catch(e){}setAhTabLoading(false)};
+  const addAuctionSale=(flipId,price)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setAhOpen(false);setAhFlipId(null)};
+
+  const startReset=()=>{setResetConfirm(true);setResetCountdown(5)};
+  const cancelReset=()=>{setResetConfirm(false);setResetCountdown(5)};
+  const confirmReset=()=>{save(DEF);setResetConfirm(false);setResetCountdown(5)};
+  const setAndSaveTheme=(t)=>{setTheme(t);};
+  const themes={
+    dark:{bg:"#080810",card:"#0f1225",cardBorder:"#1e293b",nav:"#0c0c18",input:"#1a1a35",inputBorder:"#2d2d5e",text:"#e2e8f0",textMuted:"#94a3b8",textDim:"#475569",textFaint:"#334155",greenBg:"#071a10",redBg:"#1a0808",accent:"#fcd34d",accentBg:"#1c1600",flipText:"#e2e8f0",flipDim:"#94a3b8",sellText:"#e2e8f0",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"},
+    light:{bg:"#f8fafc",card:"#ffffff",cardBorder:"#e2e8f0",nav:"#f1f5f9",input:"#f1f5f9",inputBorder:"#cbd5e1",text:"#0f172a",textMuted:"#334155",textDim:"#475569",textFaint:"#94a3b8",greenBg:"#f0fdf4",redBg:"#fef2f2",accent:"#2563eb",accentBg:"#eff6ff",flipText:"#0f172a",flipDim:"#475569",sellText:"#1e293b",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"},
+    pastel:{bg:"#fce4ec",card:"#fff8e1",cardBorder:"#f48fb1",nav:"#f8bbd0",input:"#e1f5fe",inputBorder:"#81d4fa",text:"#1a1a2e",textMuted:"#37474f",textDim:"#546e7a",textFaint:"#90a4ae",greenBg:"#e8f5e9",redBg:"#fce4ec",accent:"#e91e63",accentBg:"#fce4ec",flipText:"#1a1a2e",flipDim:"#37474f",sellText:"#1a1a2e",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"}
+  };
+  const T=themes[theme]||themes.dark;
+  
+  const getSellTotal=(f)=>f.sells.reduce((s,x)=>s+x.amount,0);
+  const getTaxTotal=(f)=>f.sells.reduce((s,x)=>{const rate=x.type==="bazaar"?data.bzTaxRate:x.type==="none"?0:x.type==="listed"?0.025:data.taxRate;return s+(x.amount*rate)},0);
+  const getProfit=(f)=>{const ts=getSellTotal(f);if(!ts)return null;return ts-f.buy-getTaxTotal(f)};
+  const getDiscount=(f)=>{const ts=getSellTotal(f);if(!ts||!f.buy)return null;return((ts-f.buy)/ts*100)};
+
+  const addFlip=()=>{if(!addForm.item||!addForm.buy)return;save({...data,flips:[...data.flips,{id:gid(),item:addForm.item,buy:parseFloat(addForm.buy)||0,sells:addForm.sell?[{id:gid(),amount:parseFloat(addForm.sell)||0,date:addForm.date||today(),type:"auction"}]:[],date:addForm.date||today(),notes:addForm.notes,complete:false,createdAt:Date.now(),manual:true}]});setAddForm({item:"",buy:"",sell:"",date:today(),notes:""})};
+  const addSale=(fid)=>{const amt=parseFloat(addSaleAmt);if(!amt)return;save({...data,flips:data.flips.map(f=>f.id===fid?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:addSaleType}]}:f)});setAddSaleAmt("");setAddSaleType("auction");setAddSaleId(null)};
+  const toggleComplete=(id)=>{const flip=data.flips.find(f=>f.id===id);const wasComplete=flip.complete;save({...data,flips:data.flips.map(f=>f.id===id?{...f,complete:!f.complete}:f)});if(!wasComplete){const p=getProfit(flip);if(p!=null)showToast(p)}};
+  const deleteFlip=(id)=>save({...data,flips:data.flips.filter(f=>f.id!==id)});
+  const startEdit=(f)=>{setEditId(f.id);setEditForm({item:f.item,buy:f.buy,date:f.date||"",notes:f.notes||""})};
+  const saveEdit=()=>{save({...data,flips:data.flips.map(f=>f.id===editId?{...f,item:editForm.item,buy:parseFloat(editForm.buy)||f.buy,date:editForm.date||f.date,notes:editForm.notes}:f)});setEditId(null)};
+  const removeSale=(fid,sid)=>save({...data,flips:data.flips.map(f=>f.id===fid?{...f,sells:f.sells.filter(s=>s.id!==sid)}:f)});
+  const updateSale=(fid,sid,newAmt)=>{const a=parseFloat(newAmt);if(!a)return;save({...data,flips:data.flips.map(f=>f.id===fid?{...f,sells:f.sells.map(s=>s.id===sid?{...s,amount:a}:s)}:f)});setEditSaleId(null);setEditSaleAmt("")};
+  const addFlipRelist=(fid)=>{const val=parseFloat(relistFlipAmt);if(!val)return;const fee=val*0.025;save({...data,flips:data.flips.map(f=>f.id===fid?{...f,buy:f.buy+fee,relists:[...(f.relists||[]),{id:gid(),listedFor:val,fee,date:today()}]}:f)});setRelistFlipAmt("");setRelistFlipId(null)};
+  const removeFlipRelist=(fid,rid)=>{const flip=data.flips.find(f=>f.id===fid);const r=(flip.relists||[]).find(x=>x.id===rid);if(!r)return;save({...data,flips:data.flips.map(f=>f.id===fid?{...f,buy:f.buy-r.fee,relists:(f.relists||[]).filter(x=>x.id!==rid)}:f)})};
+  const addInvestment=()=>{if(!invForm.skin||!invForm.amount)return;const qty=parseInt(invForm.qty)||1,amt=parseFloat(invForm.amount)||0;const ex=data.investments.find(i=>i.skin.toLowerCase()===invForm.skin.toLowerCase());if(ex){save({...data,investments:data.investments.map(i=>i.id===ex.id?{...i,totalQty:i.totalQty+qty,totalSpent:i.totalSpent+amt,entries:[...i.entries,{id:gid(),qty,amount:amt,date:invForm.date||today()}]}:i)})}else{save({...data,investments:[...data.investments,{id:gid(),skin:invForm.skin,totalQty:qty,totalSpent:amt,entries:[{id:gid(),qty,amount:amt,date:invForm.date||today()}],sales:[]}]})}setInvForm({skin:"",amount:"",qty:"1",date:today()})};
+  const addInvSale=(invId)=>{const amt=parseFloat(invSaleAmt);const qty=parseInt(invSaleQty)||1;if(!amt)return;save({...data,investments:data.investments.map(i=>i.id===invId?{...i,totalQty:i.totalQty-qty,sales:[...(i.sales||[]),{id:gid(),amount:amt,qty,type:invSaleType,date:today()}]}:i)});setInvSaleAmt("");setInvSaleQty("1");setInvSaleType("auction");setInvSaleId(null)};
+  const removeInvSale=(invId,sid)=>{const inv=data.investments.find(i=>i.id===invId);const sale=(inv.sales||[]).find(s=>s.id===sid);save({...data,investments:data.investments.map(i=>i.id===invId?{...i,totalQty:i.totalQty+(sale?.qty||1),sales:(i.sales||[]).filter(s=>s.id!==sid)}:i)})};
+  const addRelist=(invId)=>{const val=parseFloat(relistAmt);if(!val)return;const fee=val*0.025;save({...data,investments:data.investments.map(i=>i.id===invId?{...i,totalSpent:i.totalSpent+fee,entries:[...i.entries,{id:gid(),qty:0,amount:fee,date:today(),type:"relist",listedFor:val}]}:i)});setRelistAmt("");setRelistId(null)};
+  const getInvProfit=(inv)=>{const avg=inv.totalQty>0?inv.totalSpent/inv.totalQty:0;return(inv.sales||[]).reduce((t,s)=>{const rate=s.type==="bazaar"?0.01:s.type==="none"?0:s.type==="listed"?0.025:0.035;return t+((s.amount-s.amount*rate)-avg*(s.qty||1))},0)};
+  const addToInv=(invId)=>{const amt=parseFloat(invAddAmt),qty=parseInt(invAddQty)||1;if(!amt)return;save({...data,investments:data.investments.map(i=>i.id===invId?{...i,totalQty:i.totalQty+qty,totalSpent:i.totalSpent+amt,entries:[...i.entries,{id:gid(),qty,amount:amt,date:today()}]}:i)});setInvAddAmt("");setInvAddQty("1");setInvAddTo(null)};
+  const deleteInv=(id)=>save({...data,investments:data.investments.filter(i=>i.id!==id)});
+  const removeEntry=(invId,eid)=>{const inv=data.investments.find(i=>i.id===invId);const e=inv.entries.find(x=>x.id===eid);if(inv.entries.length<=1){deleteInv(invId);return}save({...data,investments:data.investments.map(i=>i.id===invId?{...i,totalQty:i.totalQty-(e.qty||1),totalSpent:i.totalSpent-e.amount,entries:i.entries.filter(x=>x.id!==eid)}:i)})};
+  const exportBackup=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="skyblock_backup_"+today()+".json";a.click()};
+  const importBackup=(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(evt)=>{try{save({...DEF,...JSON.parse(evt.target.result)});setImportStatus("Backup restored!");setTimeout(()=>setImportStatus(""),2500)}catch(e){setImportStatus("Invalid file")}};reader.readAsText(file)};
+
+  const active=useMemo(()=>data.flips.filter(f=>!f.complete),[data.flips]);
+  const completed=useMemo(()=>data.flips.filter(f=>f.complete),[data.flips]);
+  const stats=useMemo(()=>{let tot=0,w=0,l=0;completed.forEach(f=>{const p=getProfit(f);if(p!=null){tot+=p;if(p>=0)w++;else l++}});return{total:tot,wins:w,losses:l,wr:(w+l)>0?w/(w+l):0,count:completed.length}},[completed,data.taxRate]);
+  const streak=useMemo(()=>{let s=0;for(let i=completed.length-1;i>=0;i--){const p=getProfit(completed[i]);if(p!=null&&p>0)s++;else break}return s},[completed,data.taxRate]);
+  const top10=useMemo(()=>completed.map(f=>({...f,profit:getProfit(f)})).filter(f=>f.profit!=null).sort((a,b)=>b.profit-a.profit).slice(0,10),[completed,data.taxRate]);
+
+  const chartData=useMemo(()=>{const byDate={};let run=0;completed.forEach(f=>{const d=f.date||"unknown";const p=getProfit(f)||0;run+=p;byDate[d]={date:d,total:+run.toFixed(2)}});return Object.values(byDate).filter(d=>d.date!=="unknown").sort((a,b)=>a.date.localeCompare(b.date))},[completed,data.taxRate]);
+
+  // Daily data with month filtering (manual flips only)
+  const dailyData=useMemo(()=>{const map={};completed.filter(f=>f.manual!==false).forEach(f=>{const d=f.date;if(!d)return;const p=getProfit(f)||0;if(!map[d])map[d]={date:d,profit:0,count:0};map[d].profit+=p;map[d].count++});return Object.values(map).sort((a,b)=>a.date.localeCompare(b.date))},[completed,data.taxRate]);
+  const availableMonths=useMemo(()=>{const set=new Set();dailyData.forEach(d=>{const mk=getMonthKey(d.date);if(mk)set.add(mk)});return Array.from(set).sort()},[dailyData]);
+  const filteredDaily=useMemo(()=>{if(chartMonth==="all")return dailyData;return dailyData.filter(d=>getMonthKey(d.date)===chartMonth)},[dailyData,chartMonth]);
+
+  useEffect(()=>{if(tab==="auctions"&&mcUuid&&ahFullData.active.length===0&&ahFullData.sold.length===0)fetchAuctionTab()},[tab]);
+  const calcTax=calcSell?parseFloat(calcSell)*data.taxRate:0,calcRcv=calcSell?parseFloat(calcSell)-calcTax:0,calcMax=calcSell?calcRcv-(parseFloat(calcTarget)||0):0;
+  const filterF=(list)=>{if(!search)return list;const s=search.toLowerCase();return list.filter(f=>f.item.toLowerCase().includes(s)||(f.notes||"").toLowerCase().includes(s))};
+
+  const S={app:{background:T.bg,color:T.text,minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",fontSize:"13px"},card:{background:T.card,border:"1px solid "+T.cardBorder,borderRadius:"8px",padding:"14px",marginBottom:"10px"},cT:{fontSize:"11px",fontWeight:700,color:T.textMuted,marginBottom:"8px",textTransform:"uppercase",letterSpacing:"1px"},inp:{background:T.input,border:"1px solid "+T.inputBorder,borderRadius:"4px",padding:"7px 9px",color:T.text,fontFamily:"inherit",fontSize:"12px",outline:"none",width:"100%",boxSizing:"border-box"},lbl:{color:T.textMuted,fontSize:"10px",fontWeight:700,marginBottom:"3px",display:"block",textTransform:"uppercase",letterSpacing:"0.5px"},stat:{textAlign:"center",padding:"10px",background:T.card,border:"1px solid "+T.cardBorder,borderRadius:"8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"},sL:{fontSize:"9px",color:T.textDim,textTransform:"uppercase",letterSpacing:"1px",marginTop:"2px"},bMain:{padding:"7px 16px",border:"1px solid "+T.accent+"40",borderRadius:"4px",background:T.accentBg,color:T.accent,fontFamily:"inherit",fontSize:"12px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},bg:{padding:"5px 12px",border:"1px solid #4ade8040",borderRadius:"4px",background:theme==="light"?"#f0fdf4":"#0a1f15",color:"#4ade80",fontFamily:"inherit",fontSize:"11px",fontWeight:600,cursor:"pointer"},bm:{padding:"5px 10px",border:"none",borderRadius:"4px",background:"transparent",color:T.textDim,fontFamily:"inherit",fontSize:"11px",cursor:"pointer"},bs:{padding:"3px 8px",border:"none",borderRadius:"3px",background:"transparent",fontFamily:"inherit",fontSize:"11px",cursor:"pointer"},cR:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid "+T.cardBorder}};
+
+  if(authState==="loading")return null;
+  if(authState==="login")return(
+    <div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center",height:"100vh"}}>
+      <div style={{...S.card,textAlign:"center",maxWidth:"400px",padding:"40px"}}>
+        <div style={{fontSize:"28px",fontWeight:800,color:T.accent,marginBottom:"4px"}}>SKYBLOCK TRACKER</div>
+        <div style={{color:T.textDim,fontSize:"12px",marginBottom:"30px"}}>Track your lowball flips and investments</div>
+        <button onClick={signIn} style={{padding:"12px 24px",borderRadius:"8px",border:"none",background:"#5865F2",color:"#fff",fontFamily:"inherit",fontSize:"14px",fontWeight:700,cursor:"pointer",margin:"0 auto",display:"block"}}>Sign in with Discord</button>
+        <div style={{color:T.textFaint,fontSize:"10px",marginTop:"16px"}}>Your Minecraft account will be verified via Hypixel</div>
+      </div></div>);
+  if(authState==="verify")return(
+    <div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center",height:"100vh"}}>
+      <div style={{...S.card,textAlign:"center",maxWidth:"450px",padding:"40px"}}>
+        <div style={{fontSize:"20px",fontWeight:800,color:T.accent,marginBottom:"4px"}}>Verify Your Account</div>
+        <div style={{color:T.textMuted,fontSize:"12px",marginBottom:"20px"}}>Enter your Minecraft username. We will check that your Discord is linked to this account on Hypixel.</div>
+        {discordInfo&&discordInfo.avatar&&<div style={{display:"flex",alignItems:"center",gap:"8px",justifyContent:"center",marginBottom:"16px"}}>
+          <img src={discordInfo.avatar} style={{width:"24px",height:"24px",borderRadius:"50%"}} /><span style={{color:T.text,fontWeight:600}}>{discordInfo.username}</span></div>}
+        <div style={{display:"flex",gap:"8px",justifyContent:"center",marginBottom:"12px"}}>
+          <input style={{...S.inp,width:"200px",textAlign:"center"}} value={verifyInput} onChange={e=>setVerifyInput(e.target.value)} placeholder="Minecraft username" onKeyDown={e=>e.key==="Enter"&&verifyMc()} disabled={verifyLoading} />
+          <button onClick={verifyMc} disabled={verifyLoading||!verifyInput} style={{...S.bMain,opacity:verifyLoading?0.5:1}}>{verifyLoading?"Checking...":"Verify"}</button></div>
+        {verifyError&&<div style={{color:"#f87171",fontSize:"11px",marginTop:"8px"}}>{verifyError}</div>}
+        <div style={{color:T.textFaint,fontSize:"10px",marginTop:"16px"}}>Make sure you have linked your Discord in Hypixel using /discord link</div>
+        <button onClick={signOut} style={{...S.bm,marginTop:"16px",fontSize:"10px"}}>Sign out</button>
+      </div></div>);
+
+  const V=({l,v,c,bold})=>React.createElement("div",{style:{textAlign:"right",minWidth:"60px"}},React.createElement("div",{style:{fontSize:"9px",color:T.textDim,letterSpacing:"0.5px"}},l),React.createElement("div",{style:{fontWeight:bold?700:500,color:c||T.text,fontSize:"13px"}},v));
+
+  const Stat=({v,l,c})=><div style={S.stat}><div style={{fontSize:"19px",fontWeight:800,color:c}}>{v}</div><div style={S.sL}>{l}</div></div>;
+
+  const tierColor=(t)=>{const m={COMMON:"#aaaaaa",UNCOMMON:"#55ff55",RARE:"#5555ff",EPIC:"#aa00aa",LEGENDARY:"#ffaa00",MYTHIC:"#ff55ff",DIVINE:"#55ffff",SPECIAL:"#ff5555",VERY_SPECIAL:"#ff5555",SUPREME:"#aa0000"};return m[t]||"#aaaaaa"};
+  const taxLabel=(t)=>t==="bazaar"?"BZ 1%":t==="none"?"No tax":t==="listed"?"Listed 2.5%":"AH 3.5%";
+  const taxColor=(t)=>t==="bazaar"?"#60a5fa":t==="none"?"#94a3b8":t==="listed"?"#e879f9":"#fcd34d";
+
+  const renderFlip=(f,isActive)=>{
+    const ts=getSellTotal(f),tax=getTaxTotal(f),profit=getProfit(f),disc=getDiscount(f);
+    const editing=editId===f.id,adding=addSaleId===f.id,expanded=expandedId===f.id;
+    const bg=f.complete&&profit!=null?(profit>=0?T.greenBg:T.redBg):"transparent";
+    return(<div key={f.id} style={{background:bg,borderBottom:"1px solid "+T.cardBorder}}>
+      {editing?(<div style={{padding:"8px 12px",display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center"}}>
+        <input style={{...S.inp,flex:2,minWidth:"120px"}} value={editForm.item} onChange={e=>setEditForm({...editForm,item:e.target.value})} />
+        <input style={{...S.inp,width:"80px"}} type="number" value={editForm.buy} onChange={e=>setEditForm({...editForm,buy:e.target.value})} />
+        <input style={{...S.inp,width:"100px"}} type="date" value={idate(editForm.date)} onChange={e=>setEditForm({...editForm,date:e.target.value})} />
+        <input style={{...S.inp,flex:1,minWidth:"70px"}} value={editForm.notes} onChange={e=>setEditForm({...editForm,notes:e.target.value})} placeholder="Notes" />
+        <button onClick={saveEdit} style={S.bg}>Save</button><button onClick={()=>setEditId(null)} style={S.bm}>Cancel</button>
+      </div>):(<>
+        <div onClick={()=>{setExpandedId(expanded?null:f.id);if(expanded){setAhOpen(false);setAddSaleId(null)}}} style={{padding:"8px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"6px",flexWrap:"wrap"}}>
+          <div style={{flex:2,minWidth:"120px"}}>
+            <div style={{fontWeight:600,color:f.complete?T.flipText:T.flipDim,fontSize:"13px"}}>{f.item}
+              <span style={{fontSize:"10px",color:"#334155",marginLeft:"6px"}}>{expanded?"▼":"▶"}</span></div></div>
+          <div style={{display:"flex",gap:"14px",alignItems:"center",flexWrap:"wrap"}}>
+            <V l="BUY" v={fm(f.buy)} /><V l="SELL" v={ts?fm(ts):"—"} c={ts?T.sellText:T.textFaint} />
+            <V l="PROFIT" v={profit!=null?fm(profit):"—"} c={profit==null?"#334155":profit>=0?"#4ade80":"#f87171"} bold />
+            <div style={{display:"flex",gap:"2px"}} onClick={e=>e.stopPropagation()}>
+              {isActive&&<><button onClick={()=>{setAddSaleId(adding?null:f.id);setAddSaleType(defaultTax);if(!adding&&mcUuid)fetchAuctions(f.id)}} style={{...S.bs,color:"#60a5fa"}}>+Sale</button>
+              <button onClick={()=>setRelistFlipId(relistFlipId===f.id?null:f.id)} style={{...S.bs,color:"#e879f9"}}>Relist</button>
+              <button onClick={()=>startEdit(f)} style={{...S.bs,color:"#64748b"}}>Edit</button></>}
+              {isActive?<button onClick={()=>toggleComplete(f.id)} style={{...S.bs,color:"#4ade80",fontWeight:700}}>✓ Done</button>:<button onClick={()=>toggleComplete(f.id)} style={{...S.bs,color:"#fcd34d"}}>↩ Undo</button>}
+              <button onClick={()=>deleteFlip(f.id)} style={{...S.bs,color:"#f8717140"}}>×</button></div></div></div>
+        {expanded&&<div style={{padding:"0 12px 10px 12px",borderTop:"1px solid #1e293b20"}}>
+          <div style={{display:"flex",gap:"20px",flexWrap:"wrap",padding:"8px 0 4px 0"}}>
+            <div><span style={{fontSize:"9px",color:T.textDim}}>TAX PAID</span><div style={{color:"#f87171",fontSize:"12px",fontWeight:600}}>{tax?fm4(tax):"—"}</div></div>
+            <div><span style={{fontSize:"9px",color:T.textDim}}>% LOWBALL</span><div style={{color:disc!=null?(disc>=0?"#4ade80":"#f87171"):"#334155",fontSize:"12px",fontWeight:600}}>{disc!=null?disc.toFixed(1)+"%":"—"}</div></div>
+            <div><span style={{fontSize:"9px",color:T.textDim}}>DATE</span><div style={{color:"#94a3b8",fontSize:"12px"}}>{fdateF(f.date)||"No date"}</div></div>
+            {f.notes&&<div><span style={{fontSize:"9px",color:T.textDim}}>NOTES</span><div style={{color:"#94a3b8",fontSize:"12px"}}>{f.notes}</div></div>}</div>
+          {f.sells.length>0&&<div style={{marginTop:"4px"}}><span style={{fontSize:"9px",color:T.textDim}}>SALES ({f.sells.length})</span>
+            <div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginTop:"3px"}}>
+              {f.sells.map(s=>editSaleId===s.id?(
+                <span key={s.id} style={{background:"#1a1a35",borderRadius:"3px",padding:"2px 4px",fontSize:"11px",display:"inline-flex",alignItems:"center",gap:"3px"}}>
+                  <input style={{...S.inp,width:"70px",padding:"2px 4px",fontSize:"11px"}} type="number" value={editSaleAmt} onChange={e=>setEditSaleAmt(e.target.value)} autoFocus onKeyDown={e=>e.key==="Enter"&&updateSale(f.id,s.id,editSaleAmt)} />
+                  <button onClick={()=>updateSale(f.id,s.id,editSaleAmt)} style={{...S.bs,color:"#4ade80",fontSize:"10px"}}>✓</button>
+                  <button onClick={()=>setEditSaleId(null)} style={{...S.bs,color:T.textDim,fontSize:"10px"}}>✗</button></span>
+              ):(
+                <span key={s.id} style={{background:"#1a1a35",borderRadius:"3px",padding:"2px 6px",fontSize:"11px",display:"inline-flex",alignItems:"center",gap:"3px"}}>
+                  <span style={{color:taxColor(s.type)}}>{fm4(s.amount)}</span>
+                  <span style={{fontSize:"8px",color:taxColor(s.type),fontWeight:700}}>{taxLabel(s.type)}</span>
+                  <button onClick={()=>{setEditSaleId(s.id);setEditSaleAmt(String(s.amount))}} style={{...S.bs,color:"#60a5fa40",fontSize:"9px",padding:"0 2px"}}>✎</button>
+                  <button onClick={()=>removeSale(f.id,s.id)} style={{...S.bs,color:"#f8717140",fontSize:"9px",padding:"0 2px"}}>×</button></span>
+              ))}</div></div>}
+          {(f.relists||[]).length>0&&<div style={{marginTop:"4px"}}><span style={{fontSize:"9px",color:"#475569"}}>RELIST FEES</span>
+            <div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginTop:"3px"}}>
+              {(f.relists||[]).map(r=><span key={r.id} style={{background:"#1a082840",borderRadius:"3px",padding:"2px 6px",fontSize:"11px",display:"inline-flex",alignItems:"center",gap:"3px"}}>
+                <span style={{color:"#e879f9"}}>{fm4(r.fee)}</span>
+                <span style={{color:"#475569",fontSize:"9px"}}>(listed {fm4(r.listedFor)})</span>
+                <button onClick={e=>{e.stopPropagation();removeFlipRelist(f.id,r.id)}} style={{...S.bs,color:"#f8717130",fontSize:"9px",padding:"0 2px"}}>×</button></span>)}</div></div>}
+        </div>}
+      </>)}
+      {adding&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #60a5fa30",flexWrap:"wrap"}}>
+        <input style={{...S.inp,width:"100px"}} type="number" value={addSaleAmt} onChange={e=>setAddSaleAmt(e.target.value)} placeholder="Amount" autoFocus onKeyDown={e=>e.key==="Enter"&&addSale(f.id)} />
+        <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
+          {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"]].map(([k,label,c,bg])=>
+            <button key={k} onClick={()=>setAddSaleType(k)} style={{padding:"5px 8px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:addSaleType===k?bg:"#1a1a35",color:addSaleType===k?c:"#64748b",fontWeight:addSaleType===k?700:400}}>{label}</button>)}</div>
+        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%":"0%"}</span>
+        <button onClick={()=>addSale(f.id)} style={S.bg}>Add</button><button onClick={()=>{setAddSaleId(null);setAddSaleAmt("")}} style={S.bm}>Cancel</button></div>)}
+      {/* Relist form */}
+      {relistFlipId===f.id&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #e879f930",flexWrap:"wrap"}}>
+        <span style={{fontSize:"10px",color:"#e879f9"}}>Relist fee:</span>
+        <input style={{...S.inp,width:"100px"}} type="number" value={relistFlipAmt} onChange={e=>setRelistFlipAmt(e.target.value)} placeholder="Listed for..." autoFocus onKeyDown={e=>e.key==="Enter"&&addFlipRelist(f.id)} />
+        <span style={{fontSize:"9px",color:"#475569"}}>→ adds {relistFlipAmt?fm(parseFloat(relistFlipAmt)*0.025):"0.00m"} (2.5%) to buy</span>
+        <button onClick={()=>addFlipRelist(f.id)} style={{...S.bg,borderColor:"#e879f940",color:"#e879f9",background:"#1a0828"}}>Add Fee</button>
+        <button onClick={()=>{setRelistFlipId(null);setRelistFlipAmt("")}} style={S.bm}>Cancel</button></div>)}
+    </div>);
+  };
+
+  return(<div style={S.app}>
+    {/* Toast */}
+    {toast&&<div className={"toast"+(toast.exit?" toast-exit":"")} style={{background:toast.profit>=0?"#166534":"#991b1b",color:"#fff"}}>
+      {toast.profit>=0?"✓ +"+fm(toast.profit)+" profit":"✗ "+fm(toast.profit)+" loss"}</div>}
+    {/* AH Panel */}
+    {ahOpen&&<div className="ah-panel" style={{background:T.card,borderColor:T.cardBorder}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+        <div style={{fontSize:"11px",fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:"1px"}}>Recent Sold Auctions</div>
+        <button onClick={()=>{setAhOpen(false);setAhFlipId(null)}} style={{...S.bs,color:T.textDim,fontSize:"14px"}}>×</button></div>
+      {ahLoading&&<div style={{color:T.textDim,textAlign:"center",padding:"20px"}}>Loading auctions...</div>}
+      {!ahLoading&&ahAuctions.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"20px",fontSize:"11px"}}>No recent sold auctions found</div>}
+      {ahAuctions.map(a=><div key={a.auctionId} onClick={()=>{addAuctionSale(ahFlipId,a.price);setAhAuctions(prev=>prev.filter(x=>x.auctionId!==a.auctionId))}} style={{padding:"8px",borderRadius:"6px",border:"1px solid "+T.cardBorder,marginBottom:"6px",cursor:"pointer",background:T.input}}>
+        <div style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{a.itemName}</div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:"4px"}}>
+          <span style={{color:"#4ade80",fontWeight:700,fontSize:"12px"}}>{fm(a.price/1000000)}</span>
+          <span style={{color:T.textFaint,fontSize:"10px"}}>{a.soldAt?new Date(a.soldAt).toLocaleDateString():""}</span></div>
+      </div>)}</div>}
+
+    <div style={{padding:"10px 16px",background:T.nav,borderBottom:"1px solid "+T.cardBorder,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div><span style={{fontSize:"17px",fontWeight:800,color:T.accent,letterSpacing:"-1px"}}>SKYBLOCK</span><span style={{fontSize:"17px",fontWeight:300,color:T.textDim,marginLeft:"5px"}}>TRACKER</span></div>
+      </div>
+
+    <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
+      <div style={{display:"flex",flex:1,overflowX:"auto"}}>
+      {[["home","Home"],["active","Active ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["auctions","Auctions"],["calculator","Calculator"],["tutorial","Tutorial"]].map(([k,v])=>
+        <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
+      <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"16px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
+    </nav>
+
+    <div style={{padding:"12px 16px",maxWidth:"1000px",margin:"0 auto"}} className="fi">
+
+      {/* ── HOME ── */}
+      {tab==="home"&&<>
+        <div style={{display:"flex",gap:"12px",marginBottom:"12px",alignItems:"start",flexWrap:"wrap"}}>
+          <div style={{...S.card,marginBottom:0,display:"flex",alignItems:"center",gap:"14px",minWidth:"200px",flex:"0 0 auto"}}>
+            {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/120"} alt={mcName} style={{height:"120px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
+              <div><div style={{fontWeight:700,color:T.accent,fontSize:"16px"}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim,marginTop:"2px"}}>Flip Tracker</div></div>
+            </>)}</div>
+          <div className="stat-grid" style={{flex:1}}>
+            <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
+            <Stat v={stats.count} l="Completed" c={T.text} /><Stat v={active.length} l="Active" c="#60a5fa" />
+            <Stat v={stats.wins} l="Wins" c="#4ade80" /><Stat v={stats.losses} l="Losses" c="#f87171" />
+            <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" />
+            <Stat v={streak+"🔥"} l="Streak" c="#fb923c" /></div></div>
+
+        {chartData.length>1&&<div style={S.card}><div style={S.cT}>Cumulative Profit</div>
+          <div style={{height:"170px"}}><ChartBox type="line" labels={chartData.map(d=>fdate(d.date))} datasets={[{label:"Running Total",data:chartData.map(d=>d.total),borderColor:"#a78bfa",backgroundColor:"#a78bfa20",fill:true,tension:0.3,pointRadius:0,borderWidth:2}]} /></div></div>}
+
+        {/* Daily profit with month toggle */}
+        {dailyData.length>0&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px",flexWrap:"wrap",gap:"6px"}}>
+          <div style={S.cT}>Profit Per Day</div>
+          <div style={{display:"flex",gap:"3px",flexWrap:"wrap"}}>
+            <button onClick={()=>setChartMonth("all")} style={{padding:"3px 8px",border:"none",borderRadius:"3px",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:chartMonth==="all"?"#1c1600":"#1a1a35",color:chartMonth==="all"?"#fcd34d":"#64748b",fontWeight:chartMonth==="all"?700:400}}>All</button>
+            {availableMonths.map(m=><button key={m} onClick={()=>setChartMonth(m)} style={{padding:"3px 8px",border:"none",borderRadius:"3px",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:chartMonth===m?"#1c1600":"#1a1a35",color:chartMonth===m?"#fcd34d":"#64748b",fontWeight:chartMonth===m?700:400}}>{getMonthLabel(m)}</button>)}</div></div>
+          {filteredDaily.length>0?<div style={{height:"150px"}}><ChartBox type="bar" labels={filteredDaily.map(d=>fdate(d.date))} datasets={[{label:"Day Profit",data:filteredDaily.map(d=>+d.profit.toFixed(2)),backgroundColor:filteredDaily.map(d=>d.profit>=0?"#4ade8090":"#f8717190"),borderRadius:3,borderSkipped:false}]} /></div>
+          :<div style={{color:"#475569",textAlign:"center",padding:"20px",fontSize:"11px"}}>No data for this month</div>}</div>}
+
+        <div style={S.card}><div style={S.cT}>🏆 Top 10 Flips</div>
+          {top10.length===0&&<div style={{color:"#475569",textAlign:"center",padding:"16px"}}>Complete some flips to see your leaderboard</div>}
+          {top10.map((f,i)=>{const r=getRank(i);const rbg=r.icon==="💎"?T.diamondBg:r.icon==="🥇"?T.goldBg:r.icon==="🥈"?T.silverBg:T.bronzeBg;return(<div key={f.id} onClick={()=>{setTab("completed");setSearch(f.item);setExpandedId(f.id)}} style={{display:"flex",justifyContent:"space-between",padding:"7px 8px",borderBottom:"1px solid "+T.cardBorder,alignItems:"center",background:rbg,borderRadius:"4px",marginBottom:"2px",cursor:"pointer"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"8px"}}><span style={{fontSize:"14px",width:"24px",textAlign:"center"}}>{r.icon}</span>
+                  <div style={{color:r.color,fontWeight:600,fontSize:"13px"}}>{f.item}</div></div>
+            <span style={{fontWeight:700,color:"#4ade80",fontSize:"14px"}}>+{fm(f.profit)}</span></div>)})}</div>
+
+        <div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}><div style={S.cT}>Active Flips</div>
+          <button onClick={()=>setTab("active")} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>View All →</button></div>
+          {active.length===0&&<div style={{color:"#475569",textAlign:"center",padding:"16px"}}>No active flips</div>}
+          {active.slice(-8).reverse().map(f=>{const ts=getSellTotal(f),profit=getProfit(f);
+            return<div key={f.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid "+T.cardBorder,alignItems:"center"}}>
+              <div style={{color:T.textMuted,fontSize:"12px"}}>{f.item}</div>
+              <div style={{display:"flex",gap:"12px",alignItems:"center"}}><span style={{color:"#64748b",fontSize:"12px"}}>{fm(f.buy)}</span>
+                <span style={{color:profit==null?"#334155":profit>=0?"#4ade80":"#f87171",fontWeight:700,fontSize:"12px"}}>{profit!=null?fm(profit):"pending"}</span></div></div>})}</div>
+      </>}
+
+      {/* ── ACTIVE ── */}
+      {tab==="active"&&<><div style={S.card}><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
+        <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item</label><input style={S.inp} value={addForm.item} onChange={e=>setAddForm({...addForm,item:e.target.value})} placeholder="Item name..." onKeyDown={e=>e.key==="Enter"&&addFlip()} /></div>
+        <div style={{width:"90px"}}><label style={S.lbl}>Buy</label><input style={S.inp} type="number" value={addForm.buy} onChange={e=>setAddForm({...addForm,buy:e.target.value})} placeholder="0.00" /></div>
+        <div style={{width:"90px"}}><label style={S.lbl}>Sell (opt)</label><input style={S.inp} type="number" value={addForm.sell} onChange={e=>setAddForm({...addForm,sell:e.target.value})} placeholder="0.00" /></div>
+        <div style={{width:"110px"}}><label style={S.lbl}>Date</label><input style={S.inp} type="date" value={addForm.date} onChange={e=>setAddForm({...addForm,date:e.target.value})} /></div>
+        <button onClick={addFlip} style={S.bMain}>Add Flip</button></div></div>
+        <div style={{display:"flex",gap:"8px",marginBottom:"8px"}}><input style={{...S.inp,flex:1}} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." /></div>
+        <div style={{...S.card,padding:0,overflow:"auto",maxHeight:"62vh"}}>{filterF(active).length===0&&<div style={{color:"#475569",textAlign:"center",padding:"30px"}}>No active flips</div>}{filterF(active).slice().reverse().map(f=>renderFlip(f,true))}</div></>}
+
+      {/* ── COMPLETED ── */}
+      {tab==="completed"&&<>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"10px"}}>{[[fm(stats.total),"Net Profit",stats.total>=0?"#4ade80":"#f87171"],[stats.count,"Flips",T.text],[(stats.wr*100).toFixed(1)+"%","Win Rate","#a78bfa"],[streak+"🔥","Streak","#fb923c"]].map(([v,l,c],i)=>
+          <Stat key={i} v={v} l={l} c={c} />)}</div>
+        <div style={{display:"flex",gap:"8px",marginBottom:"8px"}}>
+          <input style={{...S.inp,flex:1}} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search completed flips..." />
+          <input style={{...S.inp,width:"130px"}} type="date" value={filterDate} onChange={e=>setFilterDate(e.target.value)} title="Filter by date" />
+          {filterDate&&<button onClick={()=>setFilterDate("")} style={{...S.bs,color:"#f87171",whiteSpace:"nowrap"}}>Clear</button>}
+        </div>
+        <div style={{...S.card,padding:0,overflow:"auto",maxHeight:"65vh"}}>{(()=>{let list=filterF(completed);if(filterDate)list=list.filter(f=>f.date===filterDate);return list.length===0?<div style={{color:"#475569",textAlign:"center",padding:"30px"}}>No completed flips{filterDate?" for this date":""}</div>:list.slice().reverse().map(f=>renderFlip(f,false))})()}</div></>}
+
+      {/* ── INVESTMENTS ── */}
+      {tab==="investments"&&<>
+        {data.investments.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"12px"}}>
+          <Stat v={data.investments.reduce((s,i)=>s+i.totalQty,0)} l="Total Items" c="#fcd34d" />
+          <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Spent" c="#f87171" />
+          <Stat v={fm(data.investments.reduce((s,i)=>s+getInvProfit(i),0))} l="Net Profit" c={data.investments.reduce((s,i)=>s+getInvProfit(i),0)>=0?"#4ade80":"#f87171"} />
+          <Stat v={data.investments.reduce((s,i)=>s+(i.sales||[]).length,0)} l="Sales" c="#60a5fa" /></div>}
+        <div style={S.card}><div style={S.cT}>Add Investment</div><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
+          <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item Name</label><input style={S.inp} value={invForm.skin} onChange={e=>setInvForm({...invForm,skin:e.target.value})} placeholder="Item name" onKeyDown={e=>e.key==="Enter"&&addInvestment()} /></div>
+          <div style={{width:"60px"}}><label style={S.lbl}>Qty</label><input style={S.inp} type="number" value={invForm.qty} onChange={e=>setInvForm({...invForm,qty:e.target.value})} placeholder="1" /></div>
+          <div style={{width:"100px"}}><label style={S.lbl}>Total Price</label><input style={S.inp} type="number" value={invForm.amount} onChange={e=>setInvForm({...invForm,amount:e.target.value})} placeholder="0.00" /></div>
+          <button onClick={addInvestment} style={S.bMain}>Add</button></div>
+          <div style={{fontSize:"10px",color:"#475569",marginTop:"5px"}}>Same name gets added to existing group</div></div>
+        <div style={{...S.card,padding:0}}>{data.investments.length===0&&<div style={{color:"#475569",textAlign:"center",padding:"30px"}}>No investments yet</div>}
+          {data.investments.map(inv=>{const avg=inv.totalQty>0?inv.totalSpent/inv.totalQty:0;const invProfit=getInvProfit(inv);const isSelling=invSaleId===inv.id;
+            return<div key={inv.id} style={{borderBottom:"1px solid #1e293b",padding:"12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px",flexWrap:"wrap",gap:"8px"}}>
+                <div><span style={{fontWeight:700,color:T.accent,fontSize:"14px"}}>{inv.skin}</span><span style={{fontSize:"11px",color:T.textDim,marginLeft:"8px"}}>{inv.totalQty} owned</span>{(inv.sales||[]).length>0&&<span style={{fontSize:"11px",color:"#4ade80",marginLeft:"6px"}}>{(inv.sales||[]).reduce((s,x)=>s+(x.qty||1),0)} sold</span>}</div>
+                <div style={{display:"flex",gap:"14px",alignItems:"center",flexWrap:"wrap"}}>
+                  <V l="SPENT" v={fm(inv.totalSpent)} c={T.text} /><V l="AVG EACH" v={fm(avg)} c="#a78bfa" />
+                  {invProfit!==0&&<V l="PROFIT" v={fm(invProfit)} c={invProfit>=0?"#4ade80":"#f87171"} bold />}
+                  <button onClick={()=>{setInvSaleId(isSelling?null:inv.id);setInvSaleType("auction")}} style={{...S.bs,color:"#4ade80"}}>Sell</button>
+                  <button onClick={()=>setInvAddTo(invAddTo===inv.id?null:inv.id)} style={{...S.bs,color:"#60a5fa"}}>+ Buy</button>
+                  <button onClick={()=>setRelistId(relistId===inv.id?null:inv.id)} style={{...S.bs,color:"#e879f9"}}>Relist</button>
+                  <button onClick={()=>deleteInv(inv.id)} style={{...S.bs,color:"#f8717140"}}>×</button></div></div>
+              {/* Relist form */}
+              {relistId===inv.id&&<div style={{display:"flex",gap:"6px",marginBottom:"8px",alignItems:"center",paddingLeft:"8px",borderLeft:"2px solid #e879f930",flexWrap:"wrap"}}>
+                <span style={{fontSize:"10px",color:"#e879f9"}}>Relist fee:</span>
+                <input style={{...S.inp,width:"100px"}} type="number" value={relistAmt} onChange={e=>setRelistAmt(e.target.value)} placeholder="Listed for..." autoFocus onKeyDown={e=>e.key==="Enter"&&addRelist(inv.id)} />
+                <span style={{fontSize:"9px",color:"#475569"}}>→ adds {relistAmt?fm(parseFloat(relistAmt)*0.025):"0.00m"} (2.5%) to cost</span>
+                <button onClick={()=>addRelist(inv.id)} style={{...S.bg,borderColor:"#e879f940",color:"#e879f9",background:"#1a0828"}}>Add Fee</button>
+                <button onClick={()=>{setRelistId(null);setRelistAmt("")}} style={S.bm}>Cancel</button></div>}
+              {/* Sell form */}
+              {isSelling&&<div style={{display:"flex",gap:"6px",marginBottom:"8px",alignItems:"center",paddingLeft:"8px",borderLeft:"2px solid #4ade8030",flexWrap:"wrap"}}>
+                <span style={{fontSize:"10px",color:"#4ade80"}}>Sell:</span>
+                <input style={{...S.inp,width:"50px"}} type="number" value={invSaleQty} onChange={e=>setInvSaleQty(e.target.value)} placeholder="Qty" />
+                <span style={{fontSize:"10px",color:"#475569"}}>×</span>
+                <input style={{...S.inp,width:"100px"}} type="number" value={invSaleAmt} onChange={e=>setInvSaleAmt(e.target.value)} placeholder="Total sell price" autoFocus onKeyDown={e=>e.key==="Enter"&&addInvSale(inv.id)} />
+                <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
+                  {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"]].map(([k,label,c,bg])=>
+                    <button key={k} onClick={()=>setInvSaleType(k)} style={{padding:"4px 7px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:invSaleType===k?bg:"#1a1a35",color:invSaleType===k?c:"#64748b",fontWeight:invSaleType===k?700:400}}>{label}</button>)}
+                </div>
+                <button onClick={()=>addInvSale(inv.id)} style={S.bg}>Sell</button><button onClick={()=>{setInvSaleId(null);setInvSaleAmt("")}} style={S.bm}>Cancel</button>
+                <span style={{fontSize:"9px",color:"#475569"}}>Avg cost: {fm(avg)}/ea · {invSaleQty&&parseInt(invSaleQty)>1?parseInt(invSaleQty)+"× = "+fm(avg*parseInt(invSaleQty))+" cost basis":""}</span></div>}
+              {/* Add more form */}
+              {invAddTo===inv.id&&<div style={{display:"flex",gap:"6px",marginBottom:"8px",alignItems:"center",paddingLeft:"8px",borderLeft:"2px solid #60a5fa30"}}>
+                <input style={{...S.inp,width:"50px"}} type="number" value={invAddQty} onChange={e=>setInvAddQty(e.target.value)} placeholder="Qty" />
+                <span style={{color:"#475569",fontSize:"11px"}}>for</span>
+                <input style={{...S.inp,width:"100px"}} type="number" value={invAddAmt} onChange={e=>setInvAddAmt(e.target.value)} placeholder="Total price" autoFocus onKeyDown={e=>e.key==="Enter"&&addToInv(inv.id)} />
+                <button onClick={()=>addToInv(inv.id)} style={S.bg}>Add</button><button onClick={()=>{setInvAddTo(null);setInvAddAmt("")}} style={S.bm}>Cancel</button></div>}
+              {/* Purchases */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:"4px"}}><span style={{fontSize:"9px",color:"#475569",marginRight:"4px",lineHeight:"22px"}}>BUYS:</span>
+                {inv.entries.map(e=><div key={e.id} style={{background:e.type==="relist"?"#1a082840":"#1a1a35",borderRadius:"3px",padding:"2px 7px",fontSize:"11px",display:"inline-flex",alignItems:"center",gap:"4px"}}>
+                {e.type==="relist"?(<><span style={{color:"#e879f9"}}>Relist fee: {fm(e.amount)}</span><span style={{color:"#475569",fontSize:"9px"}}>(listed {fm(e.listedFor)})</span></>)
+                :(<><span style={{color:"#94a3b8"}}>{e.qty||1}× for {fm(e.amount)}</span>{e.date&&<span style={{color:"#334155",fontSize:"9px"}}>{fdate(e.date)}</span>}</>)}
+                <button onClick={()=>removeEntry(inv.id,e.id)} style={{...S.bs,color:"#f8717130",fontSize:"9px",padding:"0 2px"}}>×</button></div>)}</div>
+              {/* Sales */}
+              {(inv.sales||[]).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:"4px",marginTop:"4px"}}><span style={{fontSize:"9px",color:"#475569",marginRight:"4px",lineHeight:"22px"}}>SALES:</span>
+                {(inv.sales||[]).map(s=>{const rate=s.type==="bazaar"?0.01:s.type==="none"?0:s.type==="listed"?0.025:0.035;const sProfit=(s.amount-s.amount*rate)-avg*(s.qty||1);
+                  return<div key={s.id} style={{background:sProfit>=0?"#0a1f1540":"#1f0a0a40",borderRadius:"3px",padding:"2px 7px",fontSize:"11px",display:"inline-flex",alignItems:"center",gap:"4px"}}>
+                    {(s.qty||1)>1&&<span style={{color:"#64748b"}}>{s.qty}×</span>}
+                    <span style={{color:taxColor(s.type)}}>{fm(s.amount)}</span>
+                    <span style={{fontSize:"8px",color:taxColor(s.type),fontWeight:700}}>{taxLabel(s.type)}</span>
+                    <span style={{color:sProfit>=0?"#4ade80":"#f87171",fontWeight:600}}>{sProfit>=0?"+":""}{fm(sProfit)}</span>
+                    <button onClick={()=>removeInvSale(inv.id,s.id)} style={{...S.bs,color:"#f8717130",fontSize:"9px",padding:"0 2px"}}>×</button></div>})}</div>}
+            </div>})}</div></>}
+
+
+      {/* ── AUCTIONS ── */}
+      {tab==="auctions"&&<>
+        {!mcUuid&&<div style={{...S.card,textAlign:"center",padding:"30px"}}><div style={{color:T.textDim}}>Verify your Minecraft account to see your auctions</div></div>}
+        {mcUuid&&<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
+            <div></div>
+            <button onClick={fetchAuctionTab} style={{...S.bg,fontSize:"11px"}}>{ahTabLoading?"Refreshing...":"↻ Refresh"}</button></div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"12px"}}>
+            <Stat v={fm(ahFullData.stats.toCollect/1000000)} l="Coins to Collect" c="#4ade80" />
+            <Stat v={fm(ahFullData.stats.ifAllSold/1000000)} l="If All Sell" c={T.accent} />
+            <Stat v={fm(ahFullData.stats.listedValue/1000000)} l="Listed Value" c="#a78bfa" /></div>
+
+          <div style={S.card}><div style={S.cT}>Active Auctions ({ahFullData.active.length})</div>
+            {ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
+            {ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";
+              return<div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                  <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
+                  <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
+                    <div style={{fontSize:"10px",color:T.textDim}}>{a.bin?"BIN":"Auction"} · {timeStr} left</div></div></div>
+                <div style={{textAlign:"right"}}><div style={{fontWeight:700,color:T.text,fontSize:"13px"}}>{fm(a.price/1000000)}</div>
+                  {!a.bin&&a.currentBid>0&&<div style={{fontSize:"10px",color:"#4ade80"}}>Bid: {fm(a.currentBid/1000000)}</div>}</div>
+              </div>})}
+          </div>
+
+          <div style={S.card}><div style={S.cT}>Recently Sold</div>
+            {ahFullData.sold.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No recently sold auctions</div>}
+            {ahFullData.sold.map(a=><div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
+              <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
+                <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
+                  <div style={{fontSize:"10px",color:T.textDim}}>{a.soldAt?fdateF(new Date(a.soldAt).toISOString().split("T")[0]):""}{a.claimed?" · Claimed":" · Unclaimed"}</div></div></div>
+              <div style={{fontWeight:700,color:"#4ade80",fontSize:"13px"}}>{fm(a.price/1000000)}</div>
+            </div>)}
+          </div>
+        </>}
+      </>}
+
+      {/* ── CALCULATOR ── */}
+      {tab==="calculator"&&<div style={{maxWidth:"420px"}}><div style={S.card}>
+        <div style={{fontSize:"14px",fontWeight:700,color:"#fcd34d",marginBottom:"14px"}}>⚡ Flip Calculator</div>
+        <label style={S.lbl}>Expected Sell Price (in millions)</label>
+        <input style={{...S.inp,fontSize:"18px",padding:"12px",fontWeight:700,color:"#fcd34d",marginBottom:"12px"}} type="number" value={calcSell} onChange={e=>setCalcSell(e.target.value)} placeholder="Enter sell price..." />
+        {calcSell&&<div className="fi">
+          <div style={S.cR}><span style={{color:"#94a3b8"}}>Tax (3.5%)</span><span style={{color:"#f87171",fontWeight:600}}>-{fm(calcTax)}</span></div>
+          <div style={S.cR}><span style={{color:"#94a3b8"}}>You Receive</span><span style={{color:"#4ade80",fontWeight:700,fontSize:"16px"}}>{fm(calcRcv)}</span></div>
+          <div style={{marginTop:"14px",marginBottom:"10px"}}><label style={S.lbl}>Target Profit (optional)</label><input style={S.inp} type="number" value={calcTarget} onChange={e=>setCalcTarget(e.target.value)} placeholder="0" /></div>
+          <div style={{background:"#0a1628",border:"1px solid #1e3a5f",borderRadius:"8px",padding:"14px",textAlign:"center"}}><div style={{fontSize:"10px",color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Max Buy Price</div>
+            <div style={{fontSize:"26px",fontWeight:800,color:"#60a5fa",letterSpacing:"-1px"}}>{fm(calcMax)}</div></div></div>}</div></div>}
+
+      {/* ── TUTORIAL ── */}
+      {tab==="tutorial"&&<div style={{maxWidth:"640px"}}><div style={{...S.card,borderColor:"#fcd34d30"}}>
+        <div style={{fontSize:"16px",fontWeight:800,color:T.accent,marginBottom:"16px"}}>📖 How to Use This Tracker</div>
+        <div style={{color:T.textMuted,lineHeight:"1.8",fontSize:"12px"}}>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>What is this?</p>
+          <p>This is a profit tracker for Hypixel Skyblock lowball flipping. You log what you buy, what you sell, and it calculates your profit after tax automatically. All values you enter are in millions, so typing "150" means 150m coins.</p>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Home</p>
+          <p>The home page shows your overall stats, a chart of your profit over time, your top 10 most profitable flips, and a preview of your current active flips.</p>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Active Flips</p>
+          <p>This is where you log new flips. Enter the item name and what you paid for it, then press the gold <span style={{color:T.accent,fontWeight:700}}>Add Flip</span> button. The flip will appear in your list below. As you sell items from that flip, use the buttons on each row to update it:</p>
+          <p style={{marginTop:"6px"}}><span style={{color:"#60a5fa",fontWeight:700}}>+Sale</span> — Add a sell price for an item. You can add multiple sales to one flip if you bought several items together. Each time you add a sale, you pick the tax type: Auction is 3.5%, Bazaar is 1%, Listed AH is 2.5% for when you listed something on the auction house but ended up selling it in the trade menu, and No Tax is for direct trades with no fees.</p>
+          <p style={{marginTop:"6px"}}><span style={{color:"#e879f9",fontWeight:700}}>Relist</span> — If you had to relist an item on the auction house, this adds the 2.5% listing fee to your buy cost so your profit stays accurate. Enter the price you listed it for and it calculates the fee automatically.</p>
+          <p style={{marginTop:"6px"}}><span style={{color:"#64748b",fontWeight:700}}>Edit</span> — Change the item name, buy price, date, or notes if you made a mistake.</p>
+          <p style={{marginTop:"6px"}}><span style={{color:"#4ade80",fontWeight:700}}>✓ Done</span> — Press this when all items in the flip have been sold. This moves the flip to the Completed tab and locks the editing buttons. Your profit from this flip will now count towards your stats and leaderboard.</p>
+          <p style={{marginTop:"6px"}}>You can click on any flip to expand it and see a detailed breakdown of the tax you paid, how far below the sell price you bought it for, the date, and every individual sale you logged.</p>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Completed</p>
+          <p>All your finished flips live here. You can search by name and filter by date to find specific flips. If you completed a flip by accident or need to add another sale, press <span style={{color:T.accent,fontWeight:700}}>↩ Undo</span> to send it back to the Active tab where you can edit it again.</p>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Investments</p>
+          <p>This is for tracking items you are holding long term rather than flipping quickly. Add an item with a name, quantity, and total price. If you buy more of the same item later, it groups them together and tracks your average cost per item. When you are ready to sell, press <span style={{color:"#4ade80",fontWeight:700}}>Sell</span>, enter the quantity and total sell price, and it will calculate your profit based on your average buy price minus the tax.</p>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Calculator</p>
+          <p>A quick tool for checking if a flip is worth it. Enter what you expect to sell an item for and it will show you the tax, what you actually receive after tax, and the maximum you can pay for the item while still making a profit.</p>
+
+          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Backups</p>
+          <p>Your data is saved in your browser, which means if you clear your browser data or switch to a different browser, your data will be gone. To protect against this, you should download a backup after each session. Go to the settings page by clicking the ⚙ icon in the top right, then press the green <span style={{color:"#4ade80",fontWeight:700}}>Download Backup</span> button. This saves a file to your computer. If you ever lose your data, go back to settings, use the Restore from backup option, and select the file you downloaded. Everything will be restored exactly as it was.</p>
+
+        </div></div></div>}
+
+      {/* ── SETTINGS ── */}
+      {tab==="settings"&&<div style={{maxWidth:"500px"}}>
+        <div style={S.card}>
+          <div style={S.cT}>Account</div>
+          {discordInfo&&<div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px"}}>
+            {discordInfo.avatar&&<img src={discordInfo.avatar} style={{width:"32px",height:"32px",borderRadius:"50%"}} />}
+            <div><div style={{fontWeight:600,color:T.text}}>{discordInfo.username}</div><div style={{fontSize:"10px",color:T.textDim}}>Discord</div></div></div>}
+          {mcName&&<div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px"}}>
+            <img src={"https://mc-heads.net/avatar/"+mcName+"/32"} style={{width:"32px",height:"32px",borderRadius:"4px",imageRendering:"pixelated"}} />
+            <div><div style={{fontWeight:600,color:T.text}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim}}>Minecraft (verified)</div></div></div>}
+          <button onClick={signOut} style={{padding:"6px 14px",border:"1px solid #f8717140",borderRadius:"4px",background:"transparent",color:"#f87171",fontFamily:"inherit",fontSize:"11px",cursor:"pointer"}}>Sign Out</button>
+        </div>
+        <div style={S.card}>
+          <div style={S.cT}>Data</div>
+          {lastSaved&&<div style={{fontSize:"11px",color:T.textDim,marginBottom:"10px"}}>Last saved: {lastSaved.toLocaleTimeString()}</div>}
+          <div style={{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"10px"}}>
+            <button onClick={exportBackup} style={{padding:"7px 16px",border:"1px solid #4ade8040",borderRadius:"4px",background:theme==="dark"?"#0a1f15":"#f0fdf4",color:"#4ade80",fontFamily:"inherit",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>↓ Download Backup</button>
+          </div>
+          <div><label style={S.lbl}>Restore from backup</label>
+            <input type="file" accept=".json" onChange={importBackup} style={{fontSize:"11px",color:T.textMuted,marginTop:"4px"}} />
+            {importStatus&&<div style={{color:"#4ade80",fontSize:"12px",fontWeight:600,marginTop:"6px"}}>{importStatus}</div>}
+          </div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cT}>Default Tax Type</div>
+          <div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"14px"}}>
+            {[["auction","Auction 3.5%"],["bazaar","Bazaar 1%"],["listed","Listed AH 2.5%"],["none","No Tax"]].map(([k,label])=>
+              <button key={k} onClick={()=>setDefaultTax(k)} style={{padding:"6px 12px",borderRadius:"4px",cursor:"pointer",fontFamily:"inherit",fontSize:"11px",fontWeight:defaultTax===k?600:400,background:defaultTax===k?"#000":"#fff",color:defaultTax===k?"#fff":"#000",border:defaultTax===k?"2px solid #000":"2px solid #e2e8f0"}}>{label}</button>)}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.cT}>Theme</div>
+          <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+            {[["dark","Dark"],["light","Light"],["pastel","Pastel"]].map(([k,label])=>
+              <button key={k} onClick={()=>setAndSaveTheme(k)} style={{
+                padding:"12px 20px",borderRadius:"8px",cursor:"pointer",fontFamily:"inherit",fontSize:"12px",fontWeight:600,
+                background:theme===k?"#000000":"#ffffff",color:theme===k?"#ffffff":"#000000",border:theme===k?"2px solid #000000":"2px solid #e2e8f0",
+                minWidth:"100px"
+              }}>{label}</button>)}
+          </div>
+        </div>
+        <div style={{...S.card,borderColor:"#f8717130",marginTop:"8px"}}>
+          <div style={S.cT}>Reset All Data</div>
+          {!resetConfirm?(<>
+            <div style={{fontSize:"11px",color:T.textDim,marginBottom:"10px"}}>This will permanently delete all flips, investments, and settings.</div>
+            <button onClick={startReset} style={{padding:"7px 16px",border:"1px solid #f8717140",borderRadius:"4px",background:theme==="dark"?"#1a0808":"#fef2f2",color:"#f87171",fontFamily:"inherit",fontSize:"12px",fontWeight:700,cursor:"pointer"}}>Reset Everything</button>
+          </>):(<>
+            <div style={{fontSize:"12px",color:"#f87171",fontWeight:600,marginBottom:"10px"}}>Are you sure? This cannot be undone.</div>
+            <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+              <button onClick={confirmReset} disabled={resetCountdown>0} style={{padding:"7px 16px",border:"1px solid #f8717140",borderRadius:"4px",background:resetCountdown>0?(theme==="dark"?"#1a1a35":"#f1f5f9"):(theme==="dark"?"#7f1d1d":"#fecaca"),color:resetCountdown>0?T.textDim:"#f87171",fontFamily:"inherit",fontSize:"12px",fontWeight:700,cursor:resetCountdown>0?"not-allowed":"pointer",opacity:resetCountdown>0?0.5:1}}>
+                {resetCountdown>0?"Confirm ("+resetCountdown+"s)":"Confirm Reset"}</button>
+              <button onClick={cancelReset} style={S.bm}>Cancel</button>
+            </div>
+          </>)}
+        </div>
+      </div>}
+    </div></div>);
+}
+document.getElementById('loading').style.display='none';
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+}catch(e){document.getElementById('loading').style.display='none';document.getElementById('error').style.display='block';document.getElementById('error-msg').textContent=e.message;console.error(e)}
+</script></body></html>
