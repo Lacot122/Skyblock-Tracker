@@ -348,7 +348,7 @@ function App(){
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Active ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["auctions","Auctions"],["calculator","Calculator"],["tutorial","Tutorial"]].map(([k,v])=>
+      {[["home","Home"],["active","Active ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["auctions","Auctions"],["calculator","Calculator"],["tutorial","Tutorial"],["changelog","Changelog"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
       <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"16px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
@@ -569,6 +569,55 @@ function App(){
           <p>Your data is saved in your browser, which means if you clear your browser data or switch to a different browser, your data will be gone. To protect against this, you should download a backup after each session. Go to the settings page by clicking the ⚙ icon in the top right, then press the green <span style={{color:"#4ade80",fontWeight:700}}>Download Backup</span> button. This saves a file to your computer. If you ever lose your data, go back to settings, use the Restore from backup option, and select the file you downloaded. Everything will be restored exactly as it was.</p>
 
         </div></div></div>}
+
+
+      {/* ── CHANGELOG ── */}
+      {tab==="changelog"&&<div style={{maxWidth:"640px"}}><div style={{...S.card,borderColor:T.accent+"30"}}>
+        <div style={{fontSize:"16px",fontWeight:800,color:T.accent,marginBottom:"16px"}}>📋 Changelog</div>
+        <div style={{color:T.textMuted,lineHeight:"1.7",fontSize:"12px"}}>
+
+          <div style={{borderLeft:"3px solid #4ade80",paddingLeft:"12px",marginBottom:"16px"}}>
+            <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v2.0 — Account Update</div>
+            <div style={{color:T.textDim,fontSize:"10px",marginBottom:"6px"}}>June 2026</div>
+            <p>Sign in with Discord and cloud saves — your data is now stored online so you never lose it.</p>
+            <p>Minecraft account verification through Hypixel. Your username is automatically set based on your linked Discord account.</p>
+            <p>Auctions tab showing your active listings, recently sold items, coins to collect, and total listed value. Items are colour-coded by rarity tier.</p>
+            <p>When adding a sale to an active flip, a panel slides in showing your recent sold auctions. Click one to add it as a sale instantly.</p>
+            <p>Profit streak tracker on the home page and completed tab.</p>
+            <p>Profit and loss toast notification that slides down from the top of the screen when you complete a flip.</p>
+            <p>Account settings showing your Discord and Minecraft profiles with sign out option.</p>
+            <p>Default tax type setting so +Sale starts on your most used tax option.</p>
+            <p>GitHub link in settings for code transparency.</p>
+          </div>
+
+          <div style={{borderLeft:"3px solid #60a5fa",paddingLeft:"12px",marginBottom:"16px"}}>
+            <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.5 — Investments and Themes</div>
+            <div style={{color:T.textDim,fontSize:"10px",marginBottom:"6px"}}>June 2026</div>
+            <p>Investment tracking with buy, sell, and profit calculation based on average cost.</p>
+            <p>Relist fee button for both flips and investments. Enter the listed value and it adds 2.5% to your cost automatically.</p>
+            <p>Three themes: Dark, Light, and Pastel.</p>
+            <p>Settings moved to a gear icon in the nav bar.</p>
+            <p>Backup and restore moved to settings.</p>
+            <p>Reset all data with 5-second countdown confirmation.</p>
+          </div>
+
+          <div style={{borderLeft:"3px solid #a78bfa",paddingLeft:"12px",marginBottom:"16px"}}>
+            <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.0 — Core Tracker</div>
+            <div style={{color:T.textDim,fontSize:"10px",marginBottom:"6px"}}>June 2026</div>
+            <p>Active and completed flip tracking with automatic profit calculation.</p>
+            <p>Multi-item trades with the +Sale button. Add individual sell prices as items sell.</p>
+            <p>Four tax types: Auction 3.5%, Bazaar 1%, Listed AH 2.5%, No Tax.</p>
+            <p>Expandable flip details showing tax paid, lowball percentage, date, notes, and individual sales.</p>
+            <p>Top 10 leaderboard with Diamond, Gold, Silver, and Bronze rankings.</p>
+            <p>Cumulative profit chart and daily profit chart with monthly filtering.</p>
+            <p>Flip calculator for checking maximum buy prices.</p>
+            <p>Minecraft skin display on the home page.</p>
+            <p>Search and date filtering on the completed tab.</p>
+            <p>Excel spreadsheet import for migrating existing data.</p>
+          </div>
+
+        </div>
+      </div></div>}
 
       {/* ── SETTINGS ── */}
       {tab==="settings"&&<div style={{maxWidth:"500px"}}>
