@@ -85,7 +85,7 @@ function App(){
   const[verifyError,setVerifyError]=useState("");
   const[verifyLoading,setVerifyLoading]=useState(false);
   const[toast,setToast]=useState(null);
-  const[ahAuctions,setAhAuctions]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);
+  const[ahAuctions,setAhAuctions]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);const[ahShowActive,setAhShowActive]=useState(true);const[ahShowSold,setAhShowSold]=useState(true);
   const[ahLoading,setAhLoading]=useState(false);
   const[ahOpen,setAhOpen]=useState(false);
   const[ahFlipId,setAhFlipId]=useState(null);
@@ -242,7 +242,6 @@ function App(){
           <button onClick={verifyMc} disabled={verifyLoading||!verifyInput} style={{...S.bMain,opacity:verifyLoading?0.5:1}}>{verifyLoading?"Checking...":"Verify"}</button></div>
         {verifyError&&<div style={{color:"#f87171",fontSize:"11px",marginTop:"8px"}}>{verifyError}</div>}
         <div style={{color:T.textFaint,fontSize:"10px",marginTop:"16px"}}>Make sure you have linked your Discord in Hypixel using /discord link</div>
-        <a href="https://github.com/Lacot122/Skyblock-Tracker" target="_blank" style={{color:T.textDim,fontSize:"11px",display:"block",marginBottom:"10px"}}>View source code on GitHub ↗</a>
           <button onClick={signOut} style={{...S.bm,marginTop:"16px",fontSize:"10px"}}>Sign out</button>
       </div></div>);
 
@@ -250,7 +249,7 @@ function App(){
 
   const Stat=({v,l,c})=><div style={S.stat}><div style={{fontSize:"19px",fontWeight:800,color:c}}>{v}</div><div style={S.sL}>{l}</div></div>;
 
-  const tierColor=(t)=>{const m={COMMON:"#aaaaaa",UNCOMMON:"#55ff55",RARE:"#5555ff",EPIC:"#aa00aa",LEGENDARY:"#ffaa00",MYTHIC:"#ff55ff",DIVINE:"#55ffff",SPECIAL:"#ff5555",VERY_SPECIAL:"#ff5555",SUPREME:"#aa0000"};return m[t]||"#aaaaaa"};
+  const tierColor=(t)=>{const m={COMMON:"#aaaaaa",UNCOMMON:"#55ff55",RARE:"#5555ff",EPIC:"#aa00aa",LEGENDARY:"#ffaa00",MYTHIC:"#ff55ff",DIVINE:"#00bfff",SPECIAL:"#ff5555",VERY_SPECIAL:"#ff5555",SUPREME:"#aa0000"};return m[t]||"#aaaaaa"};
   const taxLabel=(t)=>t==="bazaar"?"BZ 1%":t==="none"?"No tax":t==="listed"?"Listed 2.5%":"AH 3.5%";
   const taxColor=(t)=>t==="bazaar"?"#60a5fa":t==="none"?"#94a3b8":t==="listed"?"#e879f9":"#fcd34d";
 
@@ -499,9 +498,9 @@ function App(){
             <Stat v={fm(ahFullData.stats.ifAllSold/1000000)} l="If All Sell" c={T.accent} />
             <Stat v={fm(ahFullData.stats.listedValue/1000000)} l="Listed Value" c="#a78bfa" /></div>
 
-          <div style={S.card}><div style={S.cT}>Active Auctions ({ahFullData.active.length})</div>
-            {ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
-            {ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";
+          <div style={S.card}><div onClick={()=>setAhShowActive(!ahShowActive)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Active Auctions ({ahFullData.active.length})</span><span style={{fontSize:"10px",color:T.textDim}}>{ahShowActive?"▼":"▶"}</span></div>
+            {ahShowActive&&ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
+            {ahShowActive&&ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";
               return<div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
                 <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
                   <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
@@ -512,9 +511,9 @@ function App(){
               </div>})}
           </div>
 
-          <div style={S.card}><div style={S.cT}>Recently Sold</div>
-            {ahFullData.sold.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No recently sold auctions</div>}
-            {ahFullData.sold.map(a=><div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
+          <div style={S.card}><div onClick={()=>setAhShowSold(!ahShowSold)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Recently Sold</span><span style={{fontSize:"10px",color:T.textDim}}>{ahShowSold?"▼":"▶"}</span></div>
+            {ahShowSold&&ahFullData.sold.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No recently sold auctions</div>}
+            {ahShowSold&&ahFullData.sold.map(a=><div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
               <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
                 <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
                 <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
@@ -629,7 +628,6 @@ function App(){
           {mcName&&<div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px"}}>
             <img src={"https://mc-heads.net/avatar/"+mcName+"/32"} style={{width:"32px",height:"32px",borderRadius:"4px",imageRendering:"pixelated"}} />
             <div><div style={{fontWeight:600,color:T.text}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim}}>Minecraft (verified)</div></div></div>}
-          <a href="https://github.com/Lacot122/Skyblock-Tracker" target="_blank" style={{color:T.textDim,fontSize:"11px",display:"block",marginBottom:"10px"}}>View source code on GitHub ↗</a>
           <button onClick={signOut} style={{padding:"6px 14px",border:"1px solid #f8717140",borderRadius:"4px",background:"transparent",color:"#f87171",fontFamily:"inherit",fontSize:"11px",cursor:"pointer"}}>Sign Out</button>
         </div>
         <div style={S.card}>
@@ -673,6 +671,11 @@ function App(){
               <button onClick={cancelReset} style={S.bm}>Cancel</button>
             </div>
           </>)}
+        </div>
+        <div style={S.card}>
+          <div style={S.cT}>Source Code</div>
+          <a href="https://github.com/Lacot122/Skyblock-Tracker" target="_blank" style={{color:T.accent,fontSize:"12px",fontWeight:600,textDecoration:"none"}}>View source code on GitHub ↗</a>
+          <div style={{fontSize:"10px",color:T.textDim,marginTop:"4px"}}>All code is open source and publicly auditable</div>
         </div>
       </div>}
     </div></div>);
