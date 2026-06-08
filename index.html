@@ -105,7 +105,7 @@ function App(){
   const[relistFlipId,setRelistFlipId]=useState(null),[relistFlipAmt,setRelistFlipAmt]=useState("");
   const[invSaleQty,setInvSaleQty]=useState("1");
   const[importStatus,setImportStatus]=useState(""),[lastSaved,setLastSaved]=useState(null);
-  const[chartMonth,setChartMonth]=useState("all"),[filterDate,setFilterDate]=useState(""),[theme,setTheme]=useState("dark");
+  const[chartMonth,setChartMonth]=useState("all"),[chartStartDate,setChartStartDate]=useState(""),[filterDate,setFilterDate]=useState(""),[theme,setTheme]=useState("dark");
   const[resetConfirm,setResetConfirm]=useState(false),[resetCountdown,setResetCountdown]=useState(5);
     
   useEffect(()=>{
@@ -161,7 +161,7 @@ function App(){
   const showToast=(profit)=>{setToast({profit,exit:false});setTimeout(()=>setToast(t=>t?{...t,exit:true}:null),2000);setTimeout(()=>setToast(null),2300)};
 
   // AH
-  const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions(d.sold||[]);setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){setAhAuctions([])}setAhLoading(false)};
+  const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000));setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){setAhAuctions([])}setAhLoading(false)};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setAhOpen(false);setAhFlipId(null)};
 
@@ -208,7 +208,7 @@ function App(){
   const streak=useMemo(()=>{let s=0;for(let i=completed.length-1;i>=0;i--){const p=getProfit(completed[i]);if(p!=null&&p>0)s++;else break}return s},[completed,data.taxRate]);
   const top10=useMemo(()=>completed.map(f=>({...f,profit:getProfit(f)})).filter(f=>f.profit!=null).sort((a,b)=>b.profit-a.profit).slice(0,10),[completed,data.taxRate]);
 
-  const chartData=useMemo(()=>{const byDate={};let run=0;completed.forEach(f=>{const d=f.date||"unknown";const p=getProfit(f)||0;run+=p;byDate[d]={date:d,total:+run.toFixed(2)}});return Object.values(byDate).filter(d=>d.date!=="unknown").sort((a,b)=>a.date.localeCompare(b.date))},[completed,data.taxRate]);
+  const chartData=useMemo(()=>{const byDate={};let run=0;const sorted=[...completed].sort((a,b)=>(a.date||"").localeCompare(b.date||""));sorted.forEach(f=>{const d=f.date||"unknown";const p=getProfit(f)||0;run+=p;byDate[d]={date:d,total:+run.toFixed(2)}});const all=Object.values(byDate).filter(d=>d.date!=="unknown").sort((a,b)=>a.date.localeCompare(b.date));if(chartStartDate){const startRun=all.filter(d=>d.date<chartStartDate).reduce((s,d)=>d.total,0);return all.filter(d=>d.date>=chartStartDate).map(d=>({...d,total:+(d.total-startRun).toFixed(2)}))}return all},[completed,data.taxRate,chartStartDate]);
 
   // Daily data with month filtering (manual flips only)
   const dailyData=useMemo(()=>{const map={};completed.filter(f=>f.manual!==false).forEach(f=>{const d=f.date;if(!d)return;const p=getProfit(f)||0;if(!map[d])map[d]={date:d,profit:0,count:0};map[d].profit+=p;map[d].count++});return Object.values(map).sort((a,b)=>a.date.localeCompare(b.date))},[completed,data.taxRate]);
@@ -366,9 +366,10 @@ function App(){
             <Stat v={stats.count} l="Completed" c={T.text} /><Stat v={active.length} l="Active" c="#60a5fa" />
             <Stat v={stats.wins} l="Wins" c="#4ade80" /><Stat v={stats.losses} l="Losses" c="#f87171" />
             <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" />
-            <Stat v={streak+"🔥"} l="Streak" c="#fb923c" /></div></div>
+            <Stat v={streak+"🔥"} l="Streak" c="#fb923c" />
+            <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" /></div></div>
 
-        {chartData.length>1&&<div style={S.card}><div style={S.cT}>Cumulative Profit</div>
+        {chartData.length>1&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}><div style={S.cT}>Cumulative Profit</div><div style={{display:"flex",gap:"6px",alignItems:"center"}}><span style={{fontSize:"9px",color:T.textDim}}>From:</span><input type="date" style={{...S.inp,width:"120px",padding:"3px 6px",fontSize:"10px"}} value={chartStartDate} onChange={e=>setChartStartDate(e.target.value)} />{chartStartDate&&<button onClick={()=>setChartStartDate("")} style={{...S.bs,color:"#f87171",fontSize:"9px"}}>Clear</button>}</div></div>
           <div style={{height:"170px"}}><ChartBox type="line" labels={chartData.map(d=>fdate(d.date))} datasets={[{label:"Running Total",data:chartData.map(d=>d.total),borderColor:"#a78bfa",backgroundColor:"#a78bfa20",fill:true,tension:0.3,pointRadius:0,borderWidth:2}]} /></div></div>}
 
         {/* Daily profit with month toggle */}
