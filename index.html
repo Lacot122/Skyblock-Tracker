@@ -161,8 +161,8 @@ function App(){
   const showToast=(profit)=>{setToast({profit,exit:false});setTimeout(()=>setToast(t=>t?{...t,exit:true}:null),2000);setTimeout(()=>setToast(null),2300)};
 
   // AH
-  const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions(d.sold||[]);setAhFullData(d)}catch(e){setAhAuctions([])}setAhLoading(false)};
-  const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData(d)}catch(e){}setAhTabLoading(false)};
+  const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions(d.sold||[]);setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){setAhAuctions([])}setAhLoading(false)};
+  const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setAhOpen(false);setAhFlipId(null)};
 
   const startReset=()=>{setResetConfirm(true);setResetCountdown(5)};
@@ -242,7 +242,8 @@ function App(){
           <button onClick={verifyMc} disabled={verifyLoading||!verifyInput} style={{...S.bMain,opacity:verifyLoading?0.5:1}}>{verifyLoading?"Checking...":"Verify"}</button></div>
         {verifyError&&<div style={{color:"#f87171",fontSize:"11px",marginTop:"8px"}}>{verifyError}</div>}
         <div style={{color:T.textFaint,fontSize:"10px",marginTop:"16px"}}>Make sure you have linked your Discord in Hypixel using /discord link</div>
-        <button onClick={signOut} style={{...S.bm,marginTop:"16px",fontSize:"10px"}}>Sign out</button>
+        <a href="https://github.com/Lacot122/Skyblock-Tracker" target="_blank" style={{color:T.textDim,fontSize:"11px",display:"block",marginBottom:"10px"}}>View source code on GitHub ↗</a>
+          <button onClick={signOut} style={{...S.bm,marginTop:"16px",fontSize:"10px"}}>Sign out</button>
       </div></div>);
 
   const V=({l,v,c,bold})=>React.createElement("div",{style:{textAlign:"right",minWidth:"60px"}},React.createElement("div",{style:{fontSize:"9px",color:T.textDim,letterSpacing:"0.5px"}},l),React.createElement("div",{style:{fontWeight:bold?700:500,color:c||T.text,fontSize:"13px"}},v));
@@ -517,7 +518,7 @@ function App(){
               <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
                 <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
                 <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
-                  <div style={{fontSize:"10px",color:T.textDim}}>{a.soldAt?fdateF(new Date(a.soldAt).toISOString().split("T")[0]):""}{a.claimed?" · Claimed":" · Unclaimed"}</div></div></div>
+                  <div style={{fontSize:"10px",color:T.textDim}}>{(()=>{try{return a.soldAt?fdateF(new Date(a.soldAt).toISOString().split("T")[0]):""}catch(e){return""}})()}{a.claimed?" · Claimed":" · Unclaimed"}</div></div></div>
               <div style={{fontWeight:700,color:"#4ade80",fontSize:"13px"}}>{fm(a.price/1000000)}</div>
             </div>)}
           </div>
@@ -579,6 +580,7 @@ function App(){
           {mcName&&<div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px"}}>
             <img src={"https://mc-heads.net/avatar/"+mcName+"/32"} style={{width:"32px",height:"32px",borderRadius:"4px",imageRendering:"pixelated"}} />
             <div><div style={{fontWeight:600,color:T.text}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim}}>Minecraft (verified)</div></div></div>}
+          <a href="https://github.com/Lacot122/Skyblock-Tracker" target="_blank" style={{color:T.textDim,fontSize:"11px",display:"block",marginBottom:"10px"}}>View source code on GitHub ↗</a>
           <button onClick={signOut} style={{padding:"6px 14px",border:"1px solid #f8717140",borderRadius:"4px",background:"transparent",color:"#f87171",fontFamily:"inherit",fontSize:"11px",cursor:"pointer"}}>Sign Out</button>
         </div>
         <div style={S.card}>
