@@ -127,7 +127,7 @@ function App(){
     const{data:row}=await sb.from("tracker_data").select("*").eq("id",u.id).single();
     if(row){
       setData({...DEF,...(row.data||{})});
-      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app");fetch("/api/hypixel-profile?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setPurse(d.purse||0)).catch(()=>{})}
+      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app");fetch("/api/hypixel-profile?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setPurse(d.purse||0)).catch(()=>{});fetch("/api/hypixel-auctions?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})).catch(()=>{})}
       else{setAuthState("verify")}
     }else{
       await sb.from("tracker_data").insert({id:u.id,minecraft_username:"",data:DEF});
@@ -360,15 +360,15 @@ function App(){
         <div style={{display:"flex",gap:"12px",marginBottom:"12px",alignItems:"start",flexWrap:"wrap"}}>
           <div style={{...S.card,marginBottom:0,display:"flex",alignItems:"center",gap:"14px",minWidth:"200px",flex:"0 0 auto"}}>
             {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/120"} alt={mcName} style={{height:"120px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
-              <div><div style={{fontWeight:700,color:T.accent,fontSize:"16px"}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim,marginTop:"2px"}}>Flip Tracker</div></div>
+              <div><div style={{fontWeight:700,color:T.accent,fontSize:"16px"}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim,marginTop:"2px"}}>Flip Tracker</div>{streak>0&&<div style={{fontSize:"13px",color:"#fb923c",fontWeight:700,marginTop:"6px"}}>{streak} Win Streak 🔥</div>}</div>
             </>)}</div>
           <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
             <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" />
             {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}
             <Stat v={active.length} l="Active" c="#60a5fa" />
+            <Stat v={ahFullData.active.length} l="Active Auctions" c="#22d3ee" />
             <Stat v={stats.count} l="Completed" c={T.text} />
-            <Stat v={streak+"🔥"} l="Win Streak" c="#fb923c" />
             <Stat v={stats.wins} l="Wins" c="#4ade80" />
             <Stat v={stats.losses} l="Losses" c="#f87171" />
             <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" /></div></div>
