@@ -85,7 +85,7 @@ function App(){
   const[verifyError,setVerifyError]=useState("");
   const[verifyLoading,setVerifyLoading]=useState(false);
   const[toast,setToast]=useState(null);
-  const[ahAuctions,setAhAuctions]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);const[ahShowActive,setAhShowActive]=useState(true);const[ahShowSold,setAhShowSold]=useState(true);
+  const[ahAuctions,setAhAuctions]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);const[showTutorial,setShowTutorial]=useState(false);const[expandedAhId,setExpandedAhId]=useState(null);const[showChangelog,setShowChangelog]=useState(false);
   const[ahLoading,setAhLoading]=useState(false);
   const[ahOpen,setAhOpen]=useState(false);
   const[ahFlipId,setAhFlipId]=useState(null);
@@ -172,7 +172,7 @@ function App(){
   const themes={
     dark:{bg:"#080810",card:"#0f1225",cardBorder:"#1e293b",nav:"#0c0c18",input:"#1a1a35",inputBorder:"#2d2d5e",text:"#e2e8f0",textMuted:"#94a3b8",textDim:"#475569",textFaint:"#334155",greenBg:"#071a10",redBg:"#1a0808",accent:"#fcd34d",accentBg:"#1c1600",flipText:"#e2e8f0",flipDim:"#94a3b8",sellText:"#e2e8f0",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"},
     light:{bg:"#f8fafc",card:"#ffffff",cardBorder:"#e2e8f0",nav:"#f1f5f9",input:"#f1f5f9",inputBorder:"#cbd5e1",text:"#0f172a",textMuted:"#334155",textDim:"#475569",textFaint:"#94a3b8",greenBg:"#f0fdf4",redBg:"#fef2f2",accent:"#2563eb",accentBg:"#eff6ff",flipText:"#0f172a",flipDim:"#475569",sellText:"#1e293b",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"},
-    pastel:{bg:"#fce4ec",card:"#fff8e1",cardBorder:"#f48fb1",nav:"#f8bbd0",input:"#e1f5fe",inputBorder:"#81d4fa",text:"#1a1a2e",textMuted:"#37474f",textDim:"#546e7a",textFaint:"#90a4ae",greenBg:"#e8f5e9",redBg:"#fce4ec",accent:"#e91e63",accentBg:"#fce4ec",flipText:"#1a1a2e",flipDim:"#37474f",sellText:"#1a1a2e",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"}
+    pastel:{bg:"#e8c8d0",card:"#e8dfc0",cardBorder:"#d4607e",nav:"#d4909e",input:"#c0d8e8",inputBorder:"#5ba0c8",text:"#1a1a2e",textMuted:"#37474f",textDim:"#546e7a",textFaint:"#90a4ae",greenBg:"#e8f5e9",redBg:"#fce4ec",accent:"#c2185b",accentBg:"#e8c8d0",flipText:"#1a1a2e",flipDim:"#37474f",sellText:"#1a1a2e",diamondBg:"#0ea5e9",goldBg:"#d97706",silverBg:"#9ca3af",bronzeBg:"#b45309"}
   };
   const T=themes[theme]||themes.dark;
   
@@ -347,9 +347,9 @@ function App(){
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Active ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["auctions","Auctions"],["calculator","Calculator"],["tutorial","Tutorial"],["changelog","Changelog"]].map(([k,v])=>
+      {[["home","Home"],["active","Active ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["auctions","Auctions"],["calculator","Calculator"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
-      <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"16px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
+      <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"20px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
 
     <div style={{padding:"12px 16px",maxWidth:"1000px",margin:"0 auto"}} className="fi">
@@ -493,33 +493,28 @@ function App(){
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
             <div></div>
             <button onClick={fetchAuctionTab} style={{...S.bg,fontSize:"11px"}}>{ahTabLoading?"Refreshing...":"↻ Refresh"}</button></div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"12px"}}>
-            <Stat v={fm(ahFullData.stats.toCollect/1000000)} l="Coins to Collect" c="#4ade80" />
-            <Stat v={fm(ahFullData.stats.ifAllSold/1000000)} l="If All Sell" c={T.accent} />
+          <div style={{display:"grid",gridTemplateColumns:"repeat(1,1fr)",gap:"8px",marginBottom:"12px",maxWidth:"200px"}}>
             <Stat v={fm(ahFullData.stats.listedValue/1000000)} l="Listed Value" c="#a78bfa" /></div>
 
-          <div style={S.card}><div onClick={()=>setAhShowActive(!ahShowActive)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Active Auctions ({ahFullData.active.length})</span><span style={{fontSize:"10px",color:T.textDim}}>{ahShowActive?"▼":"▶"}</span></div>
-            {ahShowActive&&ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
-            {ahShowActive&&ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";
-              return<div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
-                <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-                  <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
-                  <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
-                    <div style={{fontSize:"10px",color:T.textDim}}>{a.bin?"BIN":"Auction"} · {timeStr} left</div></div></div>
-                <div style={{textAlign:"right"}}><div style={{fontWeight:700,color:T.text,fontSize:"13px"}}>{fm(a.price/1000000)}</div>
-                  {!a.bin&&a.currentBid>0&&<div style={{fontSize:"10px",color:"#4ade80"}}>Bid: {fm(a.currentBid/1000000)}</div>}</div>
+          <div style={S.card}><div style={S.cT}>Active Auctions ({ahFullData.active.length})</div>
+            {ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
+            {ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";const isExp=expandedAhId===a.auctionId;
+              return<div key={a.auctionId} style={{borderBottom:"1px solid "+T.cardBorder}}>
+                <div onClick={()=>setExpandedAhId(isExp?null:a.auctionId)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",cursor:"pointer"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                    <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
+                    <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
+                      <div style={{fontSize:"10px",color:T.textDim}}>{a.bin?"BIN":"Auction"}</div></div></div>
+                  <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                    <div style={{fontWeight:700,color:T.text,fontSize:"13px"}}>{fm(a.price/1000000)}</div>
+                    <span style={{fontSize:"10px",color:T.textDim}}>{isExp?"▼":"▶"}</span></div>
+                </div>
+                {isExp&&<div style={{padding:"0 0 8px 16px",display:"flex",gap:"16px",flexWrap:"wrap"}}>
+                  <div><span style={{fontSize:"9px",color:T.textDim}}>EXPIRES IN</span><div style={{fontSize:"12px",color:T.textMuted}}>{timeStr}</div></div>
+                  {!a.bin&&a.currentBid>0&&<div><span style={{fontSize:"9px",color:T.textDim}}>CURRENT BID</span><div style={{fontSize:"12px",color:"#4ade80"}}>{fm(a.currentBid/1000000)}</div></div>}
+                  <div><span style={{fontSize:"9px",color:T.textDim}}>TYPE</span><div style={{fontSize:"12px",color:T.textMuted}}>{a.bin?"Buy It Now":"Auction"}</div></div>
+                </div>}
               </div>})}
-          </div>
-
-          <div style={S.card}><div onClick={()=>setAhShowSold(!ahShowSold)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Recently Sold</span><span style={{fontSize:"10px",color:T.textDim}}>{ahShowSold?"▼":"▶"}</span></div>
-            {ahShowSold&&ahFullData.sold.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No recently sold auctions</div>}
-            {ahShowSold&&ahFullData.sold.map(a=><div key={a.auctionId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder}}>
-              <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-                <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
-                <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
-                  <div style={{fontSize:"10px",color:T.textDim}}>{(()=>{try{return a.soldAt?fdateF(new Date(a.soldAt).toISOString().split("T")[0]):""}catch(e){return""}})()}{a.claimed?" · Claimed":" · Unclaimed"}</div></div></div>
-              <div style={{fontWeight:700,color:"#4ade80",fontSize:"13px"}}>{fm(a.price/1000000)}</div>
-            </div>)}
           </div>
         </>}
       </>}
@@ -535,88 +530,6 @@ function App(){
           <div style={{marginTop:"14px",marginBottom:"10px"}}><label style={S.lbl}>Target Profit (optional)</label><input style={S.inp} type="number" value={calcTarget} onChange={e=>setCalcTarget(e.target.value)} placeholder="0" /></div>
           <div style={{background:"#0a1628",border:"1px solid #1e3a5f",borderRadius:"8px",padding:"14px",textAlign:"center"}}><div style={{fontSize:"10px",color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Max Buy Price</div>
             <div style={{fontSize:"26px",fontWeight:800,color:"#60a5fa",letterSpacing:"-1px"}}>{fm(calcMax)}</div></div></div>}</div></div>}
-
-      {/* ── TUTORIAL ── */}
-      {tab==="tutorial"&&<div style={{maxWidth:"640px"}}><div style={{...S.card,borderColor:"#fcd34d30"}}>
-        <div style={{fontSize:"16px",fontWeight:800,color:T.accent,marginBottom:"16px"}}>📖 How to Use This Tracker</div>
-        <div style={{color:T.textMuted,lineHeight:"1.8",fontSize:"12px"}}>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>What is this?</p>
-          <p>This is a profit tracker for Hypixel Skyblock lowball flipping. You log what you buy, what you sell, and it calculates your profit after tax automatically. All values you enter are in millions, so typing "150" means 150m coins.</p>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Home</p>
-          <p>The home page shows your overall stats, a chart of your profit over time, your top 10 most profitable flips, and a preview of your current active flips.</p>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Active Flips</p>
-          <p>This is where you log new flips. Enter the item name and what you paid for it, then press the gold <span style={{color:T.accent,fontWeight:700}}>Add Flip</span> button. The flip will appear in your list below. As you sell items from that flip, use the buttons on each row to update it:</p>
-          <p style={{marginTop:"6px"}}><span style={{color:"#60a5fa",fontWeight:700}}>+Sale</span> — Add a sell price for an item. You can add multiple sales to one flip if you bought several items together. Each time you add a sale, you pick the tax type: Auction is 3.5%, Bazaar is 1%, Listed AH is 2.5% for when you listed something on the auction house but ended up selling it in the trade menu, and No Tax is for direct trades with no fees.</p>
-          <p style={{marginTop:"6px"}}><span style={{color:"#e879f9",fontWeight:700}}>Relist</span> — If you had to relist an item on the auction house, this adds the 2.5% listing fee to your buy cost so your profit stays accurate. Enter the price you listed it for and it calculates the fee automatically.</p>
-          <p style={{marginTop:"6px"}}><span style={{color:"#64748b",fontWeight:700}}>Edit</span> — Change the item name, buy price, date, or notes if you made a mistake.</p>
-          <p style={{marginTop:"6px"}}><span style={{color:"#4ade80",fontWeight:700}}>✓ Done</span> — Press this when all items in the flip have been sold. This moves the flip to the Completed tab and locks the editing buttons. Your profit from this flip will now count towards your stats and leaderboard.</p>
-          <p style={{marginTop:"6px"}}>You can click on any flip to expand it and see a detailed breakdown of the tax you paid, how far below the sell price you bought it for, the date, and every individual sale you logged.</p>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Completed</p>
-          <p>All your finished flips live here. You can search by name and filter by date to find specific flips. If you completed a flip by accident or need to add another sale, press <span style={{color:T.accent,fontWeight:700}}>↩ Undo</span> to send it back to the Active tab where you can edit it again.</p>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Investments</p>
-          <p>This is for tracking items you are holding long term rather than flipping quickly. Add an item with a name, quantity, and total price. If you buy more of the same item later, it groups them together and tracks your average cost per item. When you are ready to sell, press <span style={{color:"#4ade80",fontWeight:700}}>Sell</span>, enter the quantity and total sell price, and it will calculate your profit based on your average buy price minus the tax.</p>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Calculator</p>
-          <p>A quick tool for checking if a flip is worth it. Enter what you expect to sell an item for and it will show you the tax, what you actually receive after tax, and the maximum you can pay for the item while still making a profit.</p>
-
-          <p style={{color:T.text,fontWeight:700,marginTop:"16px",fontSize:"13px"}}>Backups</p>
-          <p>Your data is saved in your browser, which means if you clear your browser data or switch to a different browser, your data will be gone. To protect against this, you should download a backup after each session. Go to the settings page by clicking the ⚙ icon in the top right, then press the green <span style={{color:"#4ade80",fontWeight:700}}>Download Backup</span> button. This saves a file to your computer. If you ever lose your data, go back to settings, use the Restore from backup option, and select the file you downloaded. Everything will be restored exactly as it was.</p>
-
-        </div></div></div>}
-
-
-      {/* ── CHANGELOG ── */}
-      {tab==="changelog"&&<div style={{maxWidth:"640px"}}><div style={{...S.card,borderColor:T.accent+"30"}}>
-        <div style={{fontSize:"16px",fontWeight:800,color:T.accent,marginBottom:"16px"}}>📋 Changelog</div>
-        <div style={{color:T.textMuted,lineHeight:"1.7",fontSize:"12px"}}>
-
-          <div style={{borderLeft:"3px solid #4ade80",paddingLeft:"12px",marginBottom:"16px"}}>
-            <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v2.0 — Account Update</div>
-            <div style={{color:T.textDim,fontSize:"10px",marginBottom:"6px"}}>June 2026</div>
-            <p>Sign in with Discord and cloud saves — your data is now stored online so you never lose it.</p>
-            <p>Minecraft account verification through Hypixel. Your username is automatically set based on your linked Discord account.</p>
-            <p>Auctions tab showing your active listings, recently sold items, coins to collect, and total listed value. Items are colour-coded by rarity tier.</p>
-            <p>When adding a sale to an active flip, a panel slides in showing your recent sold auctions. Click one to add it as a sale instantly.</p>
-            <p>Profit streak tracker on the home page and completed tab.</p>
-            <p>Profit and loss toast notification that slides down from the top of the screen when you complete a flip.</p>
-            <p>Account settings showing your Discord and Minecraft profiles with sign out option.</p>
-            <p>Default tax type setting so +Sale starts on your most used tax option.</p>
-            <p>GitHub link in settings for code transparency.</p>
-          </div>
-
-          <div style={{borderLeft:"3px solid #60a5fa",paddingLeft:"12px",marginBottom:"16px"}}>
-            <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.5 — Investments and Themes</div>
-            <div style={{color:T.textDim,fontSize:"10px",marginBottom:"6px"}}>June 2026</div>
-            <p>Investment tracking with buy, sell, and profit calculation based on average cost.</p>
-            <p>Relist fee button for both flips and investments. Enter the listed value and it adds 2.5% to your cost automatically.</p>
-            <p>Three themes: Dark, Light, and Pastel.</p>
-            <p>Settings moved to a gear icon in the nav bar.</p>
-            <p>Backup and restore moved to settings.</p>
-            <p>Reset all data with 5-second countdown confirmation.</p>
-          </div>
-
-          <div style={{borderLeft:"3px solid #a78bfa",paddingLeft:"12px",marginBottom:"16px"}}>
-            <div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.0 — Core Tracker</div>
-            <div style={{color:T.textDim,fontSize:"10px",marginBottom:"6px"}}>June 2026</div>
-            <p>Active and completed flip tracking with automatic profit calculation.</p>
-            <p>Multi-item trades with the +Sale button. Add individual sell prices as items sell.</p>
-            <p>Four tax types: Auction 3.5%, Bazaar 1%, Listed AH 2.5%, No Tax.</p>
-            <p>Expandable flip details showing tax paid, lowball percentage, date, notes, and individual sales.</p>
-            <p>Top 10 leaderboard with Diamond, Gold, Silver, and Bronze rankings.</p>
-            <p>Cumulative profit chart and daily profit chart with monthly filtering.</p>
-            <p>Flip calculator for checking maximum buy prices.</p>
-            <p>Minecraft skin display on the home page.</p>
-            <p>Search and date filtering on the completed tab.</p>
-            <p>Excel spreadsheet import for migrating existing data.</p>
-          </div>
-
-        </div>
-      </div></div>}
 
       {/* ── SETTINGS ── */}
       {tab==="settings"&&<div style={{maxWidth:"500px"}}>
@@ -671,6 +584,32 @@ function App(){
               <button onClick={cancelReset} style={S.bm}>Cancel</button>
             </div>
           </>)}
+        </div>
+        <div style={S.card}>
+          <div onClick={()=>setShowTutorial(!showTutorial)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Tutorial</span><span style={{fontSize:"10px",color:T.textDim}}>{showTutorial?"▼":"▶"}</span></div>
+          {showTutorial&&<div style={{color:T.textMuted,lineHeight:"1.7",fontSize:"12px",marginTop:"8px"}}>
+            <p style={{color:T.text,fontWeight:700,fontSize:"13px"}}>What is this?</p>
+            <p>A profit tracker for Hypixel Skyblock lowball flipping. Log what you buy, what you sell, and it calculates your profit after tax. All values are in millions.</p>
+            <p style={{color:T.text,fontWeight:700,marginTop:"12px",fontSize:"13px"}}>Active Flips</p>
+            <p>Enter item name and buy price, then press Add Flip. Use <span style={{color:"#60a5fa",fontWeight:700}}>+Sale</span> to add sell prices as items sell. Choose tax type: Auction 3.5%, Bazaar 1%, Listed AH 2.5%, or No Tax. Use <span style={{color:"#e879f9",fontWeight:700}}>Relist</span> to add 2.5% listing fees. Press <span style={{color:"#4ade80",fontWeight:700}}>✓ Done</span> when all items are sold.</p>
+            <p style={{color:T.text,fontWeight:700,marginTop:"12px",fontSize:"13px"}}>Investments</p>
+            <p>Track items you are holding long term. Sell to log a sale with profit calculated from your average buy price.</p>
+            <p style={{color:T.text,fontWeight:700,marginTop:"12px",fontSize:"13px"}}>Backups</p>
+            <p>Your data saves to the cloud automatically. You can also download a local backup from the Data section above.</p>
+          </div>}
+        </div>
+        <div style={S.card}>
+          <div onClick={()=>setShowChangelog(!showChangelog)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Changelog</span><span style={{fontSize:"10px",color:T.textDim}}>{showChangelog?"▼":"▶"}</span></div>
+          {showChangelog&&<div style={{color:T.textMuted,lineHeight:"1.7",fontSize:"12px",marginTop:"8px"}}>
+            <div style={{borderLeft:"3px solid #4ade80",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v2.1 — UI Cleanup</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
+              <p>Tutorial and changelog moved into settings as collapsible sections. Auctions tab simplified with expandable item details. Pastel theme refined with deeper colours. Reduced tab count.</p></div>
+            <div style={{borderLeft:"3px solid #4ade80",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v2.0 — Account Update</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
+              <p>Discord login, cloud saves, Minecraft verification via Hypixel, auction house integration, profit streak tracker, profit toast notifications, default tax type setting, source code link.</p></div>
+            <div style={{borderLeft:"3px solid #60a5fa",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.5 — Investments and Themes</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
+              <p>Investment tracking with sell and profit calculation, relist fee button, three themes, settings page, backup and restore.</p></div>
+            <div style={{borderLeft:"3px solid #a78bfa",paddingLeft:"12px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.0 — Core Tracker</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
+              <p>Active and completed flip tracking, multi-item trades, four tax types, top 10 leaderboard, profit charts, flip calculator, spreadsheet import.</p></div>
+          </div>}
         </div>
         <div style={S.card}>
           <div style={S.cT}>Source Code</div>
