@@ -89,7 +89,7 @@ function App(){
   const[ahLoading,setAhLoading]=useState(false);
   const[ahOpen,setAhOpen]=useState(false);
   const[ahFlipId,setAhFlipId]=useState(null);
-  const[defaultTax,setDefaultTax]=useState("auction");
+  const[defaultTax,setDefaultTax]=useState("auction");const[purse,setPurse]=useState(null);
   const saveTimer=useRef(null);
   const[data,setData]=useState(DEF),[tab,setTab]=useState("home"),[loaded,setLoaded]=useState(false);
   const[mcName,setMcName]=useState(""),[mcInput,setMcInput]=useState("");
@@ -127,7 +127,7 @@ function App(){
     const{data:row}=await sb.from("tracker_data").select("*").eq("id",u.id).single();
     if(row){
       setData({...DEF,...(row.data||{})});
-      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app")}
+      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app");fetch("/api/hypixel-profile?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setPurse(d.purse||0)).catch(()=>{})}
       else{setAuthState("verify")}
     }else{
       await sb.from("tracker_data").insert({id:u.id,minecraft_username:"",data:DEF});
@@ -162,6 +162,7 @@ function App(){
 
   // AH
   const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000));setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){setAhAuctions([])}setAhLoading(false)};
+  const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setAhOpen(false);setAhFlipId(null)};
 
@@ -367,7 +368,8 @@ function App(){
             <Stat v={stats.wins} l="Wins" c="#4ade80" /><Stat v={stats.losses} l="Losses" c="#f87171" />
             <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" />
             <Stat v={streak+"🔥"} l="Streak" c="#fb923c" />
-            <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" /></div></div>
+            <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" />
+            {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}</div></div>
 
         {chartData.length>1&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}><div style={S.cT}>Cumulative Profit</div><div style={{display:"flex",gap:"6px",alignItems:"center"}}><span style={{fontSize:"9px",color:T.textDim}}>From:</span><input type="date" style={{...S.inp,width:"120px",padding:"3px 6px",fontSize:"10px"}} value={chartStartDate} onChange={e=>setChartStartDate(e.target.value)} />{chartStartDate&&<button onClick={()=>setChartStartDate("")} style={{...S.bs,color:"#f87171",fontSize:"9px"}}>Clear</button>}</div></div>
           <div style={{height:"170px"}}><ChartBox type="line" labels={chartData.map(d=>fdate(d.date))} datasets={[{label:"Running Total",data:chartData.map(d=>d.total),borderColor:"#a78bfa",backgroundColor:"#a78bfa20",fill:true,tension:0.3,pointRadius:0,borderWidth:2}]} /></div></div>}
