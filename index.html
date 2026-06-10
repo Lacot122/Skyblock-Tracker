@@ -17,12 +17,14 @@ input:focus{border-color:#fcd34d!important;outline:none}input[type=number]::-web
 @keyframes toast-out{from{transform:translateY(0)}to{transform:translateY(-100%)}}
 .toast{position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;padding:8px 16px;font-family:inherit;font-size:13px;font-weight:700;animation:toast-in .3s ease-out}
 .toast-exit{animation:toast-out .3s ease-in forwards}
-.stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;align-content:center}
+.ah-sidebar{display:block}@media(max-width:900px){.ah-sidebar{display:none}}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;align-content:center}
 .stat-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;align-content:center}
 @media(max-width:700px){@keyframes toast-in{from{transform:translateY(-100%)}to{transform:translateY(0)}}
 @keyframes toast-out{from{transform:translateY(0)}to{transform:translateY(-100%)}}
 .toast{position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;padding:8px 16px;font-family:inherit;font-size:13px;font-weight:700;animation:toast-in .3s ease-out}
 .toast-exit{animation:toast-out .3s ease-in forwards}
+.ah-sidebar{display:block}@media(max-width:900px){.ah-sidebar{display:none}}
 .stat-grid{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
@@ -85,7 +87,7 @@ function App(){
   const[ahLoading,setAhLoading]=useState(false);
   const[ahOpen,setAhOpen]=useState(false);
   const[ahFlipId,setAhFlipId]=useState(null);
-  const[defaultTax,setDefaultTax]=useState("auction");const[purse,setPurse]=useState(null);
+  const[defaultTax,setDefaultTax]=useState("auction");const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const saveTimer=useRef(null);
   const[data,setData]=useState(DEF),[tab,setTab]=useState("home"),[loaded,setLoaded]=useState(false);
   const[mcName,setMcName]=useState(""),[mcInput,setMcInput]=useState("");
@@ -123,7 +125,7 @@ function App(){
     const{data:row}=await sb.from("tracker_data").select("*").eq("id",u.id).single();
     if(row){
       setData({...DEF,...(row.data||{})});
-      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app");fetch("/api/hypixel-profile?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setPurse(d.purse||0)).catch(()=>{});fetch("/api/hypixel-auctions?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})).catch(()=>{})}
+      if(row.minecraft_username){setMcName(row.minecraft_username);setMcUuid(row.data?.mcUuid||"");setTheme(row.data?.theme||"dark");setDefaultTax(row.data?.defaultTax||"auction");setAuthState("app");fetch("/api/hypixel-profile?uuid="+(row.data?.mcUuid||"")).then(r=>{if(!r.ok)throw new Error("API "+r.status);return r.json()}).then(d=>{if(d.error)setApiError(d.error);else{setPurse(d.purse||0);setApiError("")}}).catch(e=>setApiError("Hypixel API may be down"));fetch("/api/hypixel-auctions?uuid="+(row.data?.mcUuid||"")).then(r=>r.json()).then(d=>setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})).catch(()=>{})}
       else{setAuthState("verify")}
     }else{
       await sb.from("tracker_data").insert({id:u.id,minecraft_username:"",data:DEF});
@@ -327,7 +329,7 @@ function App(){
 
 
     <div style={{padding:"10px 16px",background:T.nav,borderBottom:"1px solid "+T.cardBorder,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><span style={{fontSize:"17px",fontWeight:800,color:T.accent,letterSpacing:"-1px"}}>SKYBLOCK</span><span style={{fontSize:"17px",fontWeight:300,color:T.textDim,marginLeft:"5px"}}>TRACKER</span></div>
+      <div><span style={{fontSize:"17px",fontWeight:800,color:T.accent,letterSpacing:"-1px"}}>SKYBLOCK</span><span style={{fontSize:"17px",fontWeight:300,color:T.textDim,marginLeft:"5px"}}>FLIP TRACKER</span></div>
       </div>
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
@@ -343,14 +345,14 @@ function App(){
       {tab==="home"&&<>
         <div style={{display:"flex",gap:"12px",marginBottom:"12px",alignItems:"stretch",flexWrap:"wrap"}}>
           <div style={{...S.card,marginBottom:0,display:"flex",alignItems:"center",justifyContent:"center",gap:"14px",minWidth:"200px",flex:"0 0 auto",flexDirection:"column"}}>
-            {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/180"} alt={mcName} style={{height:"180px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
+            {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/140"} alt={mcName} style={{height:"140px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
               <div style={{textAlign:"center"}}><div style={{fontWeight:700,color:T.accent,fontSize:"16px"}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim,marginTop:"2px"}}>Flip Tracker</div>{streak>0&&<div style={{fontSize:"13px",color:"#fb923c",fontWeight:700,marginTop:"6px"}}>{streak} Win Streak 🔥</div>}</div>
             </>)}</div>
           <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
             <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" />
             {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}
-            <Stat v={active.length} l="Incomplete" c="#60a5fa" />
+            <Stat v={active.length} l="Incomplete" c="#60a5fa" />{apiError&&<div style={{gridColumn:"1/-1",textAlign:"center",fontSize:"10px",color:"#f87171",padding:"4px"}}>{apiError}</div>}
             <Stat v={ahFullData.active.length} l="Active Auctions" c="#22d3ee" />
             <Stat v={stats.count} l="Completed" c={T.text} />
             <Stat v={stats.wins} l="Wins" c="#4ade80" />
@@ -387,22 +389,24 @@ function App(){
       </>}
 
       {/* ── ACTIVE ── */}
-      {tab==="active"&&<div style={{display:"flex",gap:"12px",alignItems:"flex-start"}}><div style={{flex:1,minWidth:0}}><div style={S.card}><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
-        <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item</label><input style={S.inp} value={addForm.item} onChange={e=>setAddForm({...addForm,item:e.target.value})} placeholder="Item name..." onKeyDown={e=>e.key==="Enter"&&addFlip()} /></div>
-        <div style={{width:"90px"}}><label style={S.lbl}>Buy</label><input style={S.inp} type="number" value={addForm.buy} onChange={e=>setAddForm({...addForm,buy:e.target.value})} placeholder="0.00" /></div>
-        <div style={{width:"90px"}}><label style={S.lbl}>Sell (opt)</label><input style={S.inp} type="number" value={addForm.sell} onChange={e=>setAddForm({...addForm,sell:e.target.value})} placeholder="0.00" /></div>
+      {tab==="active"&&<div style={{display:"flex",alignItems:"flex-start"}}><div style={{flex:1,minWidth:0}}><div style={S.card}><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
+        <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item</label><input style={S.inp} value={addForm.item} onChange={e=>setAddForm({...addForm,item:e.target.value})} placeholder="Item name..."  /></div>
+        <div style={{width:"90px"}}><label style={S.lbl}>Buy</label><input style={S.inp} type="number" value={addForm.buy} onChange={e=>setAddForm({...addForm,buy:e.target.value})} placeholder="0.00" onKeyDown={e=>e.key==="Enter"&&addFlip()} /></div>
+        <div style={{width:"90px"}}><label style={S.lbl}>Sell (opt)</label><input style={S.inp} type="number" value={addForm.sell} onChange={e=>setAddForm({...addForm,sell:e.target.value})} placeholder="0.00" onKeyDown={e=>e.key==="Enter"&&addFlip()} /></div>
         <div style={{width:"110px"}}><label style={S.lbl}>Date</label><input style={S.inp} type="date" value={addForm.date} onChange={e=>setAddForm({...addForm,date:e.target.value})} /></div>
         <button onClick={addFlip} style={S.bMain}>Add Flip</button></div></div>
         <div style={{display:"flex",gap:"8px",marginBottom:"8px"}}><input style={{...S.inp,flex:1}} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." /></div>
         <div style={{...S.card,padding:0,overflow:"auto",maxHeight:"62vh"}}>{filterF(active).length===0&&<div style={{color:"#475569",textAlign:"center",padding:"30px"}}>No active flips</div>}{filterF(active).slice().reverse().map(f=>renderFlip(f,true))}</div>
-        </div>{mcUuid&&<div style={{width:"280px",flexShrink:0}}>
+        </div>{mcUuid&&<div className="ah-sidebar" style={{width:"240px",flexShrink:0,marginLeft:"auto"}}>
           <div style={{...S.card,position:"sticky",top:"10px",maxHeight:"85vh",overflow:"auto"}}>
-            <div style={S.cT}>Recent Sold Auctions</div>
-            {ahAuctions.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No recent auctions</div>}
-            {ahAuctions.map(a=><div key={a.auctionId} style={{padding:"8px",borderRadius:"6px",border:"1px solid "+T.cardBorder,marginBottom:"6px",cursor:addSaleId?"pointer":"default",background:T.input,opacity:addSaleId?1:0.6}} onClick={()=>{if(addSaleId)addAuctionSale(addSaleId,a.price,a.auctionId)}}>
-              <div style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{a.itemName}</div>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:"4px"}}>
-                <span style={{color:"#4ade80",fontWeight:700,fontSize:"12px"}}>{fm(a.price/1000000)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
+              <div style={S.cT}>Recent Auctions</div>
+              {addSaleId&&<div style={{fontSize:"10px",color:"#4ade80",fontWeight:600}}>Click to add as sale</div>}
+            </div>
+            {ahAuctions.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"20px",fontSize:"11px"}}>No auctions sold in the last 24 hours</div>}
+            {ahAuctions.map(a=><div key={a.auctionId} style={{padding:"10px 12px",borderRadius:"8px",border:"1px solid "+(addSaleId?T.cardBorder:T.cardBorder),marginBottom:"8px",cursor:addSaleId?"pointer":"default",background:addSaleId?T.input:T.card,opacity:addSaleId?1:0.5,transition:"opacity 0.2s"}} onClick={()=>{if(addSaleId)addAuctionSale(addSaleId,a.price,a.auctionId)}}>
+              <div style={{fontWeight:600,color:T.text,fontSize:"13px",marginBottom:"4px"}}>{a.itemName}</div>
+              <div style={{color:"#4ade80",fontWeight:700,fontSize:"14px"}}>{fm(a.price/1000000)}</div>
             </div>)}
           </div>
         </div>}
