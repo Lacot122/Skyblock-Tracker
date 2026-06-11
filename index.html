@@ -344,9 +344,9 @@ function App(){
       {/* ── HOME ── */}
       {tab==="home"&&<>
         <div style={{display:"flex",gap:"12px",marginBottom:"12px",alignItems:"stretch",flexWrap:"wrap"}}>
-          <div style={{...S.card,marginBottom:0,display:"flex",alignItems:"center",justifyContent:"center",gap:"14px",minWidth:"200px",flex:"0 0 auto",flexDirection:"column"}}>
-            {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/140"} alt={mcName} style={{height:"140px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
-              <div style={{textAlign:"center"}}><div style={{fontWeight:700,color:T.accent,fontSize:"16px"}}>{mcName}</div><div style={{fontSize:"10px",color:T.textDim,marginTop:"2px"}}>Flip Tracker</div>{streak>0&&<div style={{fontSize:"13px",color:"#fb923c",fontWeight:700,marginTop:"6px"}}>{streak} Win Streak 🔥</div>}</div>
+          <div style={{...S.card,marginBottom:0,display:"flex",alignItems:"center",justifyContent:"center",gap:"10px",minWidth:"160px",maxWidth:"180px",flex:"0 0 auto",flexDirection:"column",padding:"10px"}}>
+            {mcName&&(<><img src={"https://mc-heads.net/body/"+mcName+"/120"} alt={mcName} style={{height:"120px",imageRendering:"pixelated"}} onError={e=>{e.target.style.display="none"}} />
+              <div style={{textAlign:"center"}}><div style={{fontWeight:700,color:T.accent,fontSize:"14px"}}>{mcName}</div><div style={{fontSize:"9px",color:T.textDim,marginTop:"1px"}}>Flip Tracker</div>{streak>0&&<div style={{fontSize:"11px",color:"#fb923c",fontWeight:700,marginTop:"3px"}}>{streak} Win Streak 🔥</div>}</div>
             </>)}</div>
           <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
@@ -389,7 +389,7 @@ function App(){
       </>}
 
       {/* ── ACTIVE ── */}
-      {tab==="active"&&<div style={{display:"flex",alignItems:"flex-start"}}><div style={{flex:1,minWidth:0}}><div style={S.card}><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
+      {tab==="active"&&<div style={{display:"flex",alignItems:"flex-start",gap:"20px"}}><div style={{flex:1,minWidth:0}}><div style={S.card}><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
         <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item</label><input style={S.inp} value={addForm.item} onChange={e=>setAddForm({...addForm,item:e.target.value})} placeholder="Item name..."  /></div>
         <div style={{width:"90px"}}><label style={S.lbl}>Buy</label><input style={S.inp} type="number" value={addForm.buy} onChange={e=>setAddForm({...addForm,buy:e.target.value})} placeholder="0.00" onKeyDown={e=>e.key==="Enter"&&addFlip()} /></div>
         <div style={{width:"90px"}}><label style={S.lbl}>Sell (opt)</label><input style={S.inp} type="number" value={addForm.sell} onChange={e=>setAddForm({...addForm,sell:e.target.value})} placeholder="0.00" onKeyDown={e=>e.key==="Enter"&&addFlip()} /></div>
@@ -401,7 +401,7 @@ function App(){
           <div style={{...S.card,position:"sticky",top:"10px",maxHeight:"85vh",overflow:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
               <div style={S.cT}>Recent Auctions</div>
-              {addSaleId&&<div style={{fontSize:"10px",color:"#4ade80",fontWeight:600}}>Click to add as sale</div>}
+              <button onClick={()=>{if(mcUuid)fetch("/api/hypixel-auctions?uuid="+mcUuid).then(r=>r.json()).then(d=>{setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)))}).catch(()=>{})}} style={{...S.bs,color:"#4ade80",fontSize:"10px"}}>↻</button>
             </div>
             {ahAuctions.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"20px",fontSize:"11px"}}>No auctions sold in the last 24 hours</div>}
             {ahAuctions.map(a=><div key={a.auctionId} style={{padding:"10px 12px",borderRadius:"8px",border:"1px solid "+(addSaleId?T.cardBorder:T.cardBorder),marginBottom:"8px",cursor:addSaleId?"pointer":"default",background:addSaleId?T.input:T.card,opacity:addSaleId?1:0.5,transition:"opacity 0.2s"}} onClick={()=>{if(addSaleId)addAuctionSale(addSaleId,a.price,a.auctionId)}}>
