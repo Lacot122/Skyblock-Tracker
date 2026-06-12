@@ -370,7 +370,7 @@ function App(){
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["crafts","Hyperion Crafts"],["auctions","Auctions"],["calculator","Calculator"]].map(([k,v])=>
+      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["crafts","Hyperion Crafts"],["auctions","Auctions"],["investments","Investments"],["calculator","Calculator"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
       <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"20px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
@@ -679,7 +679,7 @@ function App(){
             <button onClick={fetchAuctionTab} style={{...S.bg,fontSize:"11px"}}>{ahTabLoading?"Refreshing...":"↻ Refresh"}</button></div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"12px"}}>
             <Stat v={fm(ahFullData.stats.listedValue/1000000)} l="Listed Value" c="#a78bfa" />
-            <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99)} l="Projected Purse" c="#22d3ee" /></div>
+            <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99+Object.values(data.craftInventory||{}).reduce((s,v)=>s+(v.qty||0)*(v.perUnit||0),0))} l="Projected Purse" c="#22d3ee" /></div>
 
           <div style={S.card}><div style={S.cT}>Active Auctions ({ahFullData.active.length})</div>
             {ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
@@ -810,17 +810,12 @@ function App(){
             <div style={{borderLeft:"3px solid #4ade80",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v2.1 — UI Cleanup</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
               <p>Tutorial and changelog moved into settings as collapsible sections. Auctions tab simplified with expandable item details. Pastel theme refined with deeper colours. Reduced tab count.</p></div>
             <div style={{borderLeft:"3px solid #4ade80",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v2.0 — Account Update</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
-              <p>Discord login, cloud saves, Minecraft verification via Hypixel, auction house integration, profit streak tracker, profit toast notifications, default tax type setting, source code link.</p></div>
+              <p>Discord login, cloud saves, Minecraft verification via Hypixel, auction house integration, profit streak tracker, profit toast notifications, default tax type setting.</p></div>
             <div style={{borderLeft:"3px solid #60a5fa",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.5 — Investments and Themes</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
               <p>Investment tracking with sell and profit calculation, relist fee button, three themes, settings page, backup and restore.</p></div>
             <div style={{borderLeft:"3px solid #a78bfa",paddingLeft:"12px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v1.0 — Core Tracker</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
               <p>Active and completed flip tracking, multi-item trades, four tax types, top 10 leaderboard, profit charts, flip calculator, spreadsheet import.</p></div>
           </div>}
-        </div>
-        <div style={S.card}>
-          <div style={S.cT}>Source Code</div>
-          <a href="https://github.com/Lacot122/Skyblock-Tracker" target="_blank" style={{color:T.accent,fontSize:"12px",fontWeight:600,textDecoration:"none"}}>View source code on GitHub ↗</a>
-          <div style={{fontSize:"10px",color:T.textDim,marginTop:"4px"}}>All code is open source and publicly auditable</div>
         </div>
       </div>}
     </div></div>);
