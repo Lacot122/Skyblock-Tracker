@@ -178,7 +178,8 @@ function App(){
   const fetchBazaar=async()=>{setBzLoading(true);try{const r=await fetch("/api/hypixel-bazaar");const d=await r.json();if(d.prices)setBzPrices(d.prices)}catch(e){}setBzLoading(false)};
   const getModCost=(mod,prices,settings)=>{if(!prices)return 0;const mode=(settings||{})[mod.key]||"buyOrder";let total=mod.coinCost||0;for(let i=0;i<mod.bzIds.length;i++){const p=prices[mod.bzIds[i]];if(p){total+=(mode==="instaBuy"?p.instaBuy:p.buyOrder)*(mod.qtys[i]||1)}}return total};
   const newCraft=()=>{const c={id:gid(),handlePrice:"",modifiers:{},sellPrice:"",titanicQty:"5",date:today(),complete:false};MODS.forEach(m=>{if(m.default)c.modifiers[m.key]={enabled:true,override:null,filledAt:null}});setCraftBuilding(c);if(!bzPrices)fetchBazaar()};
-  const saveCraft=()=>{if(!craftBuilding)return;const c={...craftBuilding};let totalBuy=parseFloat(c.handlePrice)||0;const settings=data.craftSettings||{};MODS.forEach(m=>{const mod=c.modifiers[m.key];if(mod&&mod.enabled){const qty=m.hasQty?(parseInt(c.titanicQty)||0):1;if(mod.override!=null)totalBuy+=mod.override;else if(mod.filledAt!=null)totalBuy+=mod.filledAt;else{let cost=getModCost(m,bzPrices,settings);if(m.hasQty)cost*=qty;totalBuy+=cost}}});const flip={id:c.id,item:"Hyperion Craft",buy:totalBuy/1000000,sells:c.sellPrice?[{id:gid(),amount:parseFloat(c.sellPrice)/1000000||0,date:c.date,type:"auction"}]:[],date:c.date,notes:"Craft",complete:!!c.sellPrice,createdAt:Date.now(),manual:true,isCraft:true};save({...data,flips:[...data.flips,flip]});setCraftBuilding(null)};
+  const getCraftCost=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;const settings=data.craftSettings||{};MODS.forEach(m=>{const mod=c.modifiers[m.key];if(mod&&mod.enabled){const qty=m.hasQty?(parseInt(c.titanicQty)||0):1;if(mod.override!=null)total+=mod.override/1000000;else if(mod.filledAt!=null)total+=mod.filledAt/1000000;else{let cost=getModCost(m,bzPrices,settings);if(m.hasQty)cost*=qty;total+=cost/1000000}}});return total};
+  const saveCraft=()=>{if(!craftBuilding)return;const c={...craftBuilding};const totalBuy=getCraftCost(c);const flip={id:c.id,item:"Hyperion Craft",buy:totalBuy,sells:c.sellPrice?[{id:gid(),amount:parseFloat(c.sellPrice)||0,date:c.date,type:"auction"}]:[],date:c.date,notes:"Craft",complete:!!c.sellPrice,createdAt:Date.now(),manual:true,isCraft:true,craftData:c};const existing=data.flips.find(f=>f.id===c.id);if(existing){save({...data,flips:data.flips.map(f=>f.id===c.id?flip:f)})}else{save({...data,flips:[...data.flips,flip]})}setCraftBuilding(null)};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhOpen(false);setAhFlipId(null)};
@@ -353,7 +354,7 @@ function App(){
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["crafts","Crafts"],["auctions","Auctions"],["calculator","Calculator"]].map(([k,v])=>
+      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["crafts","Hyperion"],["auctions","Auctions"],["calculator","Calculator"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
       <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"20px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
@@ -516,34 +517,34 @@ function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
           <div></div>
           <div style={{display:"flex",gap:"8px"}}>
-            <button onClick={fetchBazaar} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"Loading...":"\u21bb Bazaar Prices"}</button>
+            <button onClick={fetchBazaar} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"Loading...":"↻ Bazaar Prices"}</button>
             <button onClick={newCraft} style={S.bMain}>+ New Craft</button></div></div>
 
         {craftBuilding&&<div style={S.card}>
           <div style={S.cT}>New Hyperion Craft</div>
 
-          <div style={{marginBottom:"12px"}}><label style={S.lbl}>Necron's Handle Buy Price (coins)</label>
-            <input style={{...S.inp,maxWidth:"250px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 600000000" autoFocus /></div>
+          <div style={{marginBottom:"12px"}}><label style={S.lbl}>Necron's Handle Buy Price (millions)</label>
+            <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 410" autoFocus /></div>
 
           <div style={{marginBottom:"12px"}}>
             {MODS.map(m=>{const mod=craftBuilding.modifiers[m.key]||{};const enabled=mod.enabled;const settings=data.craftSettings||{};
               const cost=getModCost(m,bzPrices,settings);const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;const totalCost=m.hasQty?cost*qty:cost;
               const mode=(settings[m.key])||"buyOrder";
-              return<div key={m.key} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 0",borderBottom:"1px solid "+T.cardBorder,opacity:enabled?1:0.4}}>
+              return<div key={m.key} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 0",borderBottom:"1px solid "+T.cardBorder,}}>
                 <input type="checkbox" checked={!!enabled} onChange={()=>{
                   const mods={...craftBuilding.modifiers};
                   if(m.group){MODS.filter(x=>x.group===m.group).forEach(x=>{mods[x.key]={...mods[x.key],enabled:false}})}
                   mods[m.key]={...mods[m.key],enabled:!enabled,override:null,filledAt:null};
                   setCraftBuilding({...craftBuilding,modifiers:mods})}} />
-                <div style={{flex:1,minWidth:"150px"}}><div style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{m.label}</div>
+                <div style={{flex:1,minWidth:"150px",opacity:enabled?1:0.4}}><div style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{m.label}</div>
                   {m.desc&&<div style={{fontSize:"9px",color:T.textDim}}>{m.desc}</div>}
-                  <div style={{fontSize:"9px",color:mode==="instaBuy"?"#fb923c":"#60a5fa"}}>{mode==="instaBuy"?"Insta-buy":"Buy order"}</div></div>
+                  <div style={{fontSize:"9px",color:mode==="instaBuy"?"#fb923c":"#60a5fa"}}>{mode==="instaBuy"?"Insta-buy":"Buy order"}{bzPrices&&enabled&&(()=>{const bo=getModCost(m,bzPrices,{[m.key]:"buyOrder"});const ib=getModCost(m,bzPrices,{[m.key]:"instaBuy"});const diff=ib-bo;return diff>100?" \u00b7 BO "+fm(diff/1000000)+" cheaper":""})()}</div></div>
                 {m.hasQty&&enabled&&<input style={{...S.inp,width:"50px",padding:"4px"}} type="number" value={craftBuilding.titanicQty} onChange={e=>setCraftBuilding({...craftBuilding,titanicQty:e.target.value})} />}
                 {enabled&&<>
                   {craftEditMod===m.key?<div style={{display:"flex",gap:"4px",alignItems:"center"}}>
                     <input style={{...S.inp,width:"100px",padding:"4px",fontSize:"11px"}} type="number" value={craftEditVal} onChange={e=>setCraftEditVal(e.target.value)} placeholder="Override (coins)" autoFocus onKeyDown={e=>{if(e.key==="Enter"){const mods={...craftBuilding.modifiers};mods[m.key]={...mods[m.key],override:parseFloat(craftEditVal)||null};setCraftBuilding({...craftBuilding,modifiers:mods});setCraftEditMod(null);setCraftEditVal("")}}} />
-                    <button onClick={()=>{const mods={...craftBuilding.modifiers};mods[m.key]={...mods[m.key],override:parseFloat(craftEditVal)||null};setCraftBuilding({...craftBuilding,modifiers:mods});setCraftEditMod(null);setCraftEditVal("")}} style={{...S.bs,color:"#4ade80",fontSize:"10px"}}>\u2713</button>
-                    <button onClick={()=>{setCraftEditMod(null);setCraftEditVal("")}} style={{...S.bs,color:T.textDim,fontSize:"10px"}}>\u2717</button></div>
+                    <button onClick={()=>{const mods={...craftBuilding.modifiers};mods[m.key]={...mods[m.key],override:parseFloat(craftEditVal)||null};setCraftBuilding({...craftBuilding,modifiers:mods});setCraftEditMod(null);setCraftEditVal("")}} style={{...S.bs,color:"#4ade80",fontSize:"10px"}}>✓</button>
+                    <button onClick={()=>{setCraftEditMod(null);setCraftEditVal("")}} style={{...S.bs,color:T.textDim,fontSize:"10px"}}>✗</button></div>
                   :<div style={{display:"flex",alignItems:"center",gap:"6px"}}>
                     <span style={{fontWeight:700,color:mod.override!=null?"#fb923c":(mod.filledAt!=null?"#4ade80":T.text),fontSize:"13px"}}>{fm((mod.override!=null?mod.override:mod.filledAt!=null?mod.filledAt:totalCost)/1000000)}</span>
                     <button onClick={()=>{setCraftEditMod(m.key);setCraftEditVal(mod.override!=null?String(mod.override):"")}} style={{...S.bs,color:T.textDim,fontSize:"9px"}}>✎</button>
@@ -556,14 +557,16 @@ function App(){
           <div style={{background:T.input,borderRadius:"6px",padding:"10px",marginBottom:"10px"}}>
             <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"10px"}}>
               <div><span style={{fontSize:"9px",color:T.textDim}}>HANDLE</span><div style={{fontWeight:700,color:T.text,fontSize:"14px"}}>{craftBuilding.handlePrice?fm(parseFloat(craftBuilding.handlePrice)/1000000):"—"}</div></div>
-              <div><span style={{fontSize:"9px",color:T.textDim}}>MODIFIERS</span><div style={{fontWeight:700,color:T.text,fontSize:"14px"}}>{fm(MODS.reduce((t,m)=>{const mod=craftBuilding.modifiers[m.key];if(!mod||!mod.enabled)return t;const settings=data.craftSettings||{};const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;if(mod.override!=null)return t+mod.override;if(mod.filledAt!=null)return t+mod.filledAt;let c=getModCost(m,bzPrices,settings);if(m.hasQty)c*=qty;return t+c},0)/1000000)}</div></div>
-              <div><span style={{fontSize:"9px",color:T.textDim}}>TOTAL CRAFT COST</span><div style={{fontWeight:700,color:"#fcd34d",fontSize:"14px"}}>{fm(((parseFloat(craftBuilding.handlePrice)||0)+MODS.reduce((t,m)=>{const mod=craftBuilding.modifiers[m.key];if(!mod||!mod.enabled)return t;const settings=data.craftSettings||{};const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;if(mod.override!=null)return t+mod.override;if(mod.filledAt!=null)return t+mod.filledAt;let c=getModCost(m,bzPrices,settings);if(m.hasQty)c*=qty;return t+c},0))/1000000)}</div></div>
+              <div><span style={{fontSize:"9px",color:T.textDim}}>MODIFIERS</span><div style={{fontWeight:700,color:T.text,fontSize:"14px"}}>{fm(MODS.reduce((t,m)=>{const mod=craftBuilding.modifiers[m.key];if(!mod||!mod.enabled)return t;const settings=data.craftSettings||{};const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;if(mod.override!=null)return t+mod.override/1000000;if(mod.filledAt!=null)return t+mod.filledAt/1000000;let c=getModCost(m,bzPrices,settings);if(m.hasQty)c*=qty;return t+c/1000000},0))}</div></div>
+              <div><span style={{fontSize:"9px",color:T.textDim}}>TOTAL CRAFT COST</span><div style={{fontWeight:700,color:"#fcd34d",fontSize:"14px"}}>{fm((parseFloat(craftBuilding.handlePrice)||0)+MODS.reduce((t,m)=>{const mod=craftBuilding.modifiers[m.key];if(!mod||!mod.enabled)return t;const settings=data.craftSettings||{};const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;if(mod.override!=null)return t+mod.override/1000000;if(mod.filledAt!=null)return t+mod.filledAt/1000000;let c=getModCost(m,bzPrices,settings);if(m.hasQty)c*=qty;return t+c/1000000},0))}</div></div>
             </div>
           </div>
 
+          <div style={{marginBottom:"10px"}}><label style={S.lbl}>Extra Costs (millions, optional)</label>
+            <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.extraCost||""} onChange={e=>setCraftBuilding({...craftBuilding,extraCost:e.target.value})} placeholder="e.g. misc fees" /></div>
           <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"10px"}}>
-            <div><label style={S.lbl}>Sell Price (coins, optional)</label>
-              <input style={{...S.inp,width:"200px"}} type="number" value={craftBuilding.sellPrice} onChange={e=>setCraftBuilding({...craftBuilding,sellPrice:e.target.value})} placeholder="Leave blank if unsold" /></div>
+            <div><label style={S.lbl}>Sell Price (millions, optional)</label>
+              <input style={{...S.inp,width:"200px"}} type="number" value={craftBuilding.sellPrice} onChange={e=>setCraftBuilding({...craftBuilding,sellPrice:e.target.value})} placeholder="e.g. 900" /></div>
             <div><label style={S.lbl}>Date</label>
               <input style={{...S.inp,width:"120px"}} type="date" value={craftBuilding.date} onChange={e=>setCraftBuilding({...craftBuilding,date:e.target.value})} /></div>
           </div>
