@@ -89,9 +89,11 @@ function App(){
   const[ahFlipId,setAhFlipId]=useState(null);
   const[defaultTax,setDefaultTax]=useState("auction");
   const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);
-  const[craftBuilding,setCraftBuilding]=useState(null);const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
+  const[craftBuilding,setCraftBuilding]=useState(null);const[expandedCraftId,setExpandedCraftId]=useState(null);const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
   const MODS=[
-    {key:"scrolls",label:"Scrolls (3)",desc:"Shadow Warp + Wither Shield + Implosion",bzIds:["SHADOW_WARP_SCROLL","WITHER_SHIELD_SCROLL","IMPLOSION_SCROLL"],qtys:[1,1,1],default:true},
+    {key:"shadowWarp",label:"Shadow Warp Scroll",bzIds:["SHADOW_WARP_SCROLL"],qtys:[1],default:true},
+    {key:"witherShield",label:"Wither Shield Scroll",bzIds:["WITHER_SHIELD_SCROLL"],qtys:[1],default:true},
+    {key:"implosion",label:"Implosion Scroll",bzIds:["IMPLOSION_SCROLL"],qtys:[1],default:true},
     {key:"catalysts",label:"24× Wither Catalyst",bzIds:["WITHER_CATALYST"],qtys:[24],default:true},
     {key:"laserEyes",label:"8× L.A.S.R's Eye",bzIds:["LASR_EYE"],qtys:[8],default:true},
     {key:"recomb",label:"Recombobulator",bzIds:["RECOMBOBULATOR_3000"],qtys:[1],default:false},
@@ -177,9 +179,16 @@ function App(){
   const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)));setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){setAhAuctions([])}setAhLoading(false)};
   const fetchBazaar=async()=>{setBzLoading(true);try{const r=await fetch("/api/hypixel-bazaar");const d=await r.json();if(d.prices)setBzPrices(d.prices)}catch(e){}setBzLoading(false)};
   const getModCost=(mod,prices,settings)=>{if(!prices)return 0;const mode=(settings||{})[mod.key]||"buyOrder";let total=mod.coinCost||0;for(let i=0;i<mod.bzIds.length;i++){const p=prices[mod.bzIds[i]];if(p){total+=(mode==="instaBuy"?p.instaBuy:p.buyOrder)*(mod.qtys[i]||1)}}return total};
-  const newCraft=()=>{const c={id:gid(),handlePrice:"",modifiers:{},sellPrice:"",titanicQty:"5",date:today(),complete:false};MODS.forEach(m=>{if(m.default)c.modifiers[m.key]={enabled:true,override:null,filledAt:null}});setCraftBuilding(c);if(!bzPrices)fetchBazaar()};
-  const getCraftCost=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;const settings=data.craftSettings||{};MODS.forEach(m=>{const mod=c.modifiers[m.key];if(mod&&mod.enabled){const qty=m.hasQty?(parseInt(c.titanicQty)||0):1;if(mod.override!=null)total+=mod.override/1000000;else if(mod.filledAt!=null)total+=mod.filledAt/1000000;else{let cost=getModCost(m,bzPrices,settings);if(m.hasQty)cost*=qty;total+=cost/1000000}}});return total};
-  const saveCraft=()=>{if(!craftBuilding)return;const c={...craftBuilding};const totalBuy=getCraftCost(c);const flip={id:c.id,item:"Hyperion Craft",buy:totalBuy,sells:c.sellPrice?[{id:gid(),amount:parseFloat(c.sellPrice)||0,date:c.date,type:"auction"}]:[],date:c.date,notes:"Craft",complete:!!c.sellPrice,createdAt:Date.now(),manual:true,isCraft:true,craftData:c};const existing=data.flips.find(f=>f.id===c.id);if(existing){save({...data,flips:data.flips.map(f=>f.id===c.id?flip:f)})}else{save({...data,flips:[...data.flips,flip]})}setCraftBuilding(null)};
+  const newCraft=()=>{const c={id:gid(),handlePrice:"",extraCost:"",modifiers:{},sellPrice:"",titanicQty:"5",date:today(),complete:false};MODS.forEach(m=>{if(m.default)c.modifiers[m.key]={enabled:true,filled:false,filledPrice:null}});setCraftBuilding(c);if(!bzPrices)fetchBazaar()};
+  const getCraftActualCost=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;MODS.forEach(m=>{const mod=c.modifiers[m.key];if(mod&&mod.enabled&&mod.filled){total+=(mod.filledPrice||0)/1000000}});return total};
+  const getCraftEstimate=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;const settings=data.craftSettings||{};MODS.forEach(m=>{const mod=c.modifiers[m.key];if(mod&&mod.enabled){if(mod.filled){total+=(mod.filledPrice||0)/1000000}else{const qty=m.hasQty?(parseInt(c.titanicQty)||0):1;let cost=getModCost(m,bzPrices,settings);if(m.hasQty)cost*=qty;total+=cost/1000000}}});return total};
+  const saveCraftNew=()=>{if(!craftBuilding)return;const c={...craftBuilding,createdAt:Date.now()};const existing=(data.crafts||[]).find(x=>x.id===c.id);if(existing){save({...data,crafts:data.crafts.map(x=>x.id===c.id?c:x)})}else{save({...data,crafts:[...(data.crafts||[]),c]})}setCraftBuilding(null)};
+  const fillMod=(craftId,modKey)=>{const settings=data.craftSettings||{};const mode=settings[modKey]||"buyOrder";const mod=MODS.find(m=>m.key===modKey);if(!mod)return;const qty=mod.hasQty?(parseInt((data.crafts||[]).find(c=>c.id===craftId)?.titanicQty)||0):1;let cost=getModCost(mod,bzPrices,settings);if(mod.hasQty)cost*=qty;save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:true,filledPrice:cost}}}:c)})};
+  const unfillMod=(craftId,modKey)=>{save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:false,filledPrice:null}}}:c)})};
+  const completeCraft=(craftId,sellPrice)=>{save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,complete:true,sellPrice:parseFloat(sellPrice)||0}:c)})};
+  const undoCraft=(craftId)=>{save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,complete:false,sellPrice:null}:c)})};
+  const deleteCraft=(craftId)=>{save({...data,crafts:(data.crafts||[]).filter(c=>c.id!==craftId)})};
+  const getCraftProfit=(c)=>{if(!c.sellPrice)return null;const cost=getCraftActualCost(c);const tax=c.sellPrice*0.01;return c.sellPrice-cost-tax};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhOpen(false);setAhFlipId(null)};
@@ -223,7 +232,7 @@ function App(){
 
   const active=useMemo(()=>data.flips.filter(f=>!f.complete),[data.flips]);
   const completed=useMemo(()=>data.flips.filter(f=>f.complete),[data.flips]);
-  const stats=useMemo(()=>{let tot=0,w=0,l=0;completed.forEach(f=>{const p=getProfit(f);if(p!=null){tot+=p;if(p>=0)w++;else l++}});return{total:tot,wins:w,losses:l,wr:(w+l)>0?w/(w+l):0,count:completed.length}},[completed,data.taxRate]);
+  const stats=useMemo(()=>{let tot=0,w=0,l=0;completed.forEach(f=>{const p=getProfit(f);if(p!=null){tot+=p;if(p>=0)w++;else l++}});(data.crafts||[]).filter(c=>c.complete).forEach(c=>{const p=getCraftProfit(c);if(p!=null){tot+=p;if(p>=0)w++;else l++}});const cnt=completed.length+(data.crafts||[]).filter(c=>c.complete).length;return{total:tot,wins:w,losses:l,wr:(w+l)>0?w/(w+l):0,count:cnt}},[completed,data.taxRate,data.crafts]);
   const streak=useMemo(()=>{let s=0;for(let i=completed.length-1;i>=0;i--){const p=getProfit(completed[i]);if(p!=null&&p>0)s++;else break}return s},[completed,data.taxRate]);
   const top10=useMemo(()=>completed.map(f=>({...f,profit:getProfit(f)})).filter(f=>f.profit!=null).sort((a,b)=>b.profit-a.profit).slice(0,10),[completed,data.taxRate]);
 
@@ -275,7 +284,7 @@ function App(){
   const renderFlip=(f,isActive)=>{
     const ts=getSellTotal(f),tax=getTaxTotal(f),profit=getProfit(f),disc=getDiscount(f);
     const editing=editId===f.id,adding=addSaleId===f.id,expanded=expandedId===f.id;
-    const bg=f.isCraft?(theme==="dark"?"#0d1117":theme==="light"?"#eff6ff":"#e8d5f0"):f.complete&&profit!=null?(profit>=0?T.greenBg:T.redBg):"transparent";
+    const bg=f.complete&&profit!=null?(profit>=0?T.greenBg:T.redBg):"transparent";
     return(<div key={f.id} style={{background:bg,borderBottom:"1px solid "+T.cardBorder}}>
       {editing?(<div style={{padding:"8px 12px",display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center"}}>
         <input style={{...S.inp,flex:2,minWidth:"120px"}} value={editForm.item} onChange={e=>setEditForm({...editForm,item:e.target.value})} />
@@ -354,7 +363,7 @@ function App(){
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["crafts","Hyperion"],["auctions","Auctions"],["calculator","Calculator"]].map(([k,v])=>
+      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["investments","Investments"],["crafts","Hyperion Crafts"],["auctions","Auctions"],["calculator","Calculator"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
       <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"20px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
@@ -517,73 +526,82 @@ function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
           <div></div>
           <div style={{display:"flex",gap:"8px"}}>
-            <button onClick={fetchBazaar} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"Loading...":"↻ Bazaar Prices"}</button>
+            <button onClick={fetchBazaar} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"Loading...":"\u21bb Bazaar"}</button>
             <button onClick={newCraft} style={S.bMain}>+ New Craft</button></div></div>
 
         {craftBuilding&&<div style={S.card}>
           <div style={S.cT}>New Hyperion Craft</div>
-
-          <div style={{marginBottom:"12px"}}><label style={S.lbl}>Necron's Handle Buy Price (millions)</label>
+          <div style={{marginBottom:"12px"}}><label style={S.lbl}>Handle Buy Price (millions)</label>
             <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 410" autoFocus /></div>
-
-          <div style={{marginBottom:"12px"}}>
-            {MODS.map(m=>{const mod=craftBuilding.modifiers[m.key]||{};const enabled=mod.enabled;const settings=data.craftSettings||{};
-              const cost=getModCost(m,bzPrices,settings);const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;const totalCost=m.hasQty?cost*qty:cost;
-              const mode=(settings[m.key])||"buyOrder";
-              return<div key={m.key} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 0",borderBottom:"1px solid "+T.cardBorder,}}>
-                <input type="checkbox" checked={!!enabled} onChange={()=>{
-                  const mods={...craftBuilding.modifiers};
-                  if(m.group){MODS.filter(x=>x.group===m.group).forEach(x=>{mods[x.key]={...mods[x.key],enabled:false}})}
-                  mods[m.key]={...mods[m.key],enabled:!enabled,override:null,filledAt:null};
-                  setCraftBuilding({...craftBuilding,modifiers:mods})}} />
-                <div style={{flex:1,minWidth:"150px",opacity:enabled?1:0.4}}><div style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{m.label}</div>
-                  {m.desc&&<div style={{fontSize:"9px",color:T.textDim}}>{m.desc}</div>}
-                  <div style={{fontSize:"9px",color:mode==="instaBuy"?"#fb923c":"#60a5fa"}}>{mode==="instaBuy"?"Insta-buy":"Buy order"}{bzPrices&&enabled&&(()=>{const bo=getModCost(m,bzPrices,{[m.key]:"buyOrder"});const ib=getModCost(m,bzPrices,{[m.key]:"instaBuy"});const diff=ib-bo;return diff>100?" \u00b7 BO "+fm(diff/1000000)+" cheaper":""})()}</div></div>
-                {m.hasQty&&enabled&&<input style={{...S.inp,width:"50px",padding:"4px"}} type="number" value={craftBuilding.titanicQty} onChange={e=>setCraftBuilding({...craftBuilding,titanicQty:e.target.value})} />}
-                {enabled&&<>
-                  {craftEditMod===m.key?<div style={{display:"flex",gap:"4px",alignItems:"center"}}>
-                    <input style={{...S.inp,width:"100px",padding:"4px",fontSize:"11px"}} type="number" value={craftEditVal} onChange={e=>setCraftEditVal(e.target.value)} placeholder="Override (coins)" autoFocus onKeyDown={e=>{if(e.key==="Enter"){const mods={...craftBuilding.modifiers};mods[m.key]={...mods[m.key],override:parseFloat(craftEditVal)||null};setCraftBuilding({...craftBuilding,modifiers:mods});setCraftEditMod(null);setCraftEditVal("")}}} />
-                    <button onClick={()=>{const mods={...craftBuilding.modifiers};mods[m.key]={...mods[m.key],override:parseFloat(craftEditVal)||null};setCraftBuilding({...craftBuilding,modifiers:mods});setCraftEditMod(null);setCraftEditVal("")}} style={{...S.bs,color:"#4ade80",fontSize:"10px"}}>✓</button>
-                    <button onClick={()=>{setCraftEditMod(null);setCraftEditVal("")}} style={{...S.bs,color:T.textDim,fontSize:"10px"}}>✗</button></div>
-                  :<div style={{display:"flex",alignItems:"center",gap:"6px"}}>
-                    <span style={{fontWeight:700,color:mod.override!=null?"#fb923c":(mod.filledAt!=null?"#4ade80":T.text),fontSize:"13px"}}>{fm((mod.override!=null?mod.override:mod.filledAt!=null?mod.filledAt:totalCost)/1000000)}</span>
-                    <button onClick={()=>{setCraftEditMod(m.key);setCraftEditVal(mod.override!=null?String(mod.override):"")}} style={{...S.bs,color:T.textDim,fontSize:"9px"}}>✎</button>
-                    {!mod.filledAt&&mod.override==null&&<button onClick={()=>{const mods={...craftBuilding.modifiers};mods[m.key]={...mods[m.key],filledAt:totalCost};setCraftBuilding({...craftBuilding,modifiers:mods})}} style={{...S.bs,color:"#4ade80",fontSize:"9px"}}>✓ Filled</button>}
-                  </div>}
-                </>}
-              </div>})}
-          </div>
-
-          <div style={{background:T.input,borderRadius:"6px",padding:"10px",marginBottom:"10px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"10px"}}>
-              <div><span style={{fontSize:"9px",color:T.textDim}}>HANDLE</span><div style={{fontWeight:700,color:T.text,fontSize:"14px"}}>{craftBuilding.handlePrice?fm(parseFloat(craftBuilding.handlePrice)):"—"}</div></div>
-              <div><span style={{fontSize:"9px",color:T.textDim}}>MODIFIERS</span><div style={{fontWeight:700,color:T.text,fontSize:"14px"}}>{fm(MODS.reduce((t,m)=>{const mod=craftBuilding.modifiers[m.key];if(!mod||!mod.enabled)return t;const settings=data.craftSettings||{};const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;if(mod.override!=null)return t+mod.override/1000000;if(mod.filledAt!=null)return t+mod.filledAt/1000000;let c=getModCost(m,bzPrices,settings);if(m.hasQty)c*=qty;return t+c/1000000},0))}</div></div>
-              <div><span style={{fontSize:"9px",color:T.textDim}}>TOTAL CRAFT COST</span><div style={{fontWeight:700,color:"#fcd34d",fontSize:"14px"}}>{fm((parseFloat(craftBuilding.handlePrice)||0)+MODS.reduce((t,m)=>{const mod=craftBuilding.modifiers[m.key];if(!mod||!mod.enabled)return t;const settings=data.craftSettings||{};const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;if(mod.override!=null)return t+mod.override/1000000;if(mod.filledAt!=null)return t+mod.filledAt/1000000;let c=getModCost(m,bzPrices,settings);if(m.hasQty)c*=qty;return t+c/1000000},0))}</div></div>
-            </div>
-          </div>
-
-          <div style={{marginBottom:"10px"}}><label style={S.lbl}>Extra Costs (millions, optional)</label>
+          <div style={{fontSize:"10px",color:T.textDim,marginBottom:"8px"}}>Select modifiers. Prices shown are estimates only and won't be added until you mark them as bought.</div>
+          {MODS.map(m=>{const mod=craftBuilding.modifiers[m.key]||{};const enabled=mod.enabled;const settings=data.craftSettings||{};
+            const cost=getModCost(m,bzPrices,settings);const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;const totalCost=m.hasQty?cost*qty:cost;
+            const mode=(settings[m.key])||"buyOrder";
+            return<div key={m.key} style={{display:"flex",alignItems:"center",gap:"8px",padding:"6px 0",borderBottom:"1px solid "+T.cardBorder}}>
+              <input type="checkbox" checked={!!enabled} onChange={()=>{
+                const mods={...craftBuilding.modifiers};
+                if(m.group){MODS.filter(x=>x.group===m.group).forEach(x=>{mods[x.key]={...mods[x.key],enabled:false,filled:false,filledPrice:null}})}
+                mods[m.key]={enabled:!enabled,filled:false,filledPrice:null};
+                setCraftBuilding({...craftBuilding,modifiers:mods})}} />
+              <div style={{flex:1,minWidth:"150px",opacity:enabled?1:0.4}}><div style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{m.label}</div>
+                {m.desc&&<div style={{fontSize:"9px",color:T.textDim}}>{m.desc}</div>}</div>
+              {m.hasQty&&enabled&&<input style={{...S.inp,width:"50px",padding:"4px"}} type="number" value={craftBuilding.titanicQty} onChange={e=>setCraftBuilding({...craftBuilding,titanicQty:e.target.value})} />}
+              {enabled&&<span style={{color:T.textDim,fontSize:"12px"}}>~{fm(totalCost/1000000)}</span>}
+            </div>})}
+          <div style={{marginTop:"10px"}}><label style={S.lbl}>Extra Costs (millions, optional)</label>
             <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.extraCost||""} onChange={e=>setCraftBuilding({...craftBuilding,extraCost:e.target.value})} placeholder="e.g. misc fees" /></div>
-          <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"10px"}}>
-            <div><label style={S.lbl}>Sell Price (millions, optional)</label>
-              <input style={{...S.inp,width:"200px"}} type="number" value={craftBuilding.sellPrice} onChange={e=>setCraftBuilding({...craftBuilding,sellPrice:e.target.value})} placeholder="e.g. 900" /></div>
-            <div><label style={S.lbl}>Date</label>
-              <input style={{...S.inp,width:"120px"}} type="date" value={craftBuilding.date} onChange={e=>setCraftBuilding({...craftBuilding,date:e.target.value})} /></div>
-          </div>
-
+          <div style={{background:T.input,borderRadius:"6px",padding:"10px",margin:"10px 0"}}>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <div><span style={{fontSize:"9px",color:T.textDim}}>ESTIMATE</span><div style={{fontWeight:700,color:T.textDim,fontSize:"14px"}}>{fm(getCraftEstimate(craftBuilding))}</div></div>
+            </div></div>
           <div style={{display:"flex",gap:"8px"}}>
-            <button onClick={saveCraft} style={S.bMain}>{craftBuilding.sellPrice?"Save as Completed":"Save as Incomplete"}</button>
+            <button onClick={saveCraftNew} style={S.bMain}>Save Craft</button>
             <button onClick={()=>setCraftBuilding(null)} style={S.bm}>Cancel</button></div>
         </div>}
 
-        <div style={S.card}><div style={S.cT}>Completed Crafts</div>
-          {data.flips.filter(f=>f.isCraft).length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No crafts yet</div>}
-          {data.flips.filter(f=>f.isCraft).slice().reverse().map(f=>{const p=getProfit(f);return<div key={f.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder,alignItems:"center"}}>
-            <div><div style={{fontWeight:600,color:T.accent,fontSize:"12px"}}>Hyperion Craft</div><div style={{fontSize:"10px",color:T.textDim}}>{fdateF(f.date)}</div></div>
-            <div style={{display:"flex",gap:"14px",alignItems:"center"}}>
-              <V l="COST" v={fm(f.buy)} /><V l="SOLD" v={f.sells.length>0?fm(getSellTotal(f)):"—"} c={f.sells.length>0?T.text:T.textFaint} />
-              <V l="PROFIT" v={p!=null?fm(p):"—"} c={p==null?T.textFaint:p>=0?"#4ade80":"#f87171"} bold /></div>
-          </div>})}
+        <div style={S.card}><div style={S.cT}>Active Crafts ({(data.crafts||[]).filter(c=>!c.complete).length})</div>
+          {(data.crafts||[]).filter(c=>!c.complete).length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active crafts</div>}
+          {(data.crafts||[]).filter(c=>!c.complete).slice().reverse().map(c=>{const exp=expandedCraftId===c.id;const actual=getCraftActualCost(c);const estimate=getCraftEstimate(c);
+            return<div key={c.id} style={{borderBottom:"1px solid "+T.cardBorder}}>
+              <div onClick={()=>setExpandedCraftId(exp?null:c.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",cursor:"pointer"}}>
+                <div><div style={{fontWeight:600,color:T.accent,fontSize:"12px"}}>Hyperion Craft <span style={{color:T.textDim,fontSize:"10px"}}>{exp?"\u25bc":"\u25b6"}</span></div>
+                  <div style={{fontSize:"10px",color:T.textDim}}>{fdateF(c.date)}</div></div>
+                <div style={{display:"flex",gap:"14px",alignItems:"center"}}>
+                  <V l="ACTUAL COST" v={fm(actual)} c={T.text} />
+                  <V l="ESTIMATE" v={fm(estimate)} c={T.textDim} />
+                  <button onClick={e=>{e.stopPropagation();setCraftBuilding({...c})}} style={{...S.bs,color:"#60a5fa",fontSize:"10px"}}>Edit</button>
+                  <button onClick={e=>{e.stopPropagation();deleteCraft(c.id)}} style={{...S.bs,color:"#f8717140"}}>\u00d7</button></div></div>
+              {exp&&<div style={{padding:"0 0 10px 0"}}>
+                <div style={{marginBottom:"8px"}}><span style={{fontSize:"9px",color:T.textDim}}>HANDLE: </span><span style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{fm(parseFloat(c.handlePrice)||0)}</span></div>
+                {MODS.map(m=>{const mod=c.modifiers[m.key];if(!mod||!mod.enabled)return null;const settings=data.craftSettings||{};const mode=settings[m.key]||"buyOrder";
+                  const qty=m.hasQty?(parseInt(c.titanicQty)||0):1;let estCost=getModCost(m,bzPrices,settings);if(m.hasQty)estCost*=qty;
+                  return<div key={m.key} style={{display:"flex",alignItems:"center",gap:"8px",padding:"4px 0",borderBottom:"1px solid "+T.cardBorder+"40"}}>
+                    <input type="checkbox" checked={!!mod.filled} onChange={()=>{if(mod.filled)unfillMod(c.id,m.key);else fillMod(c.id,m.key)}} />
+                    <div style={{flex:1,opacity:mod.filled?1:0.5}}><span style={{fontSize:"12px",color:T.text,fontWeight:mod.filled?600:400}}>{m.label}</span>
+                      {m.hasQty&&<span style={{fontSize:"10px",color:T.textDim}}> ({qty}x)</span>}</div>
+                    <div style={{textAlign:"right"}}>{mod.filled?<span style={{color:"#4ade80",fontWeight:700,fontSize:"12px"}}>{fm((mod.filledPrice||0)/1000000)}</span>
+                      :<span style={{color:T.textDim,fontSize:"11px"}}>~{fm(estCost/1000000)} ({mode==="instaBuy"?"IB":"BO"})</span>}</div>
+                  </div>})}
+                {parseFloat(c.extraCost)>0&&<div style={{padding:"4px 0",fontSize:"11px",color:T.textMuted}}>Extra costs: {fm(parseFloat(c.extraCost))}</div>}
+                <div style={{display:"flex",gap:"8px",alignItems:"end",marginTop:"10px"}}>
+                  <div><label style={{...S.lbl,fontSize:"9px"}}>Sell Price (millions)</label>
+                    <input style={{...S.inp,width:"150px"}} type="number" placeholder="Enter sell price" id={"sell-"+c.id} /></div>
+                  <button onClick={()=>{const inp=document.getElementById("sell-"+c.id);completeCraft(c.id,inp?.value)}} style={{...S.bg,fontSize:"11px"}}>✓ Done</button></div>
+              </div>}
+            </div>})}
+        </div>
+
+        <div style={S.card}><div style={S.cT}>Completed Crafts ({(data.crafts||[]).filter(c=>c.complete).length})</div>
+          {(data.crafts||[]).filter(c=>c.complete).length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No completed crafts yet</div>}
+          {(data.crafts||[]).filter(c=>c.complete).slice().reverse().map(c=>{const cost=getCraftActualCost(c);const p=getCraftProfit(c);
+            return<div key={c.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid "+T.cardBorder,alignItems:"center"}}>
+              <div><div style={{fontWeight:600,color:T.accent,fontSize:"12px"}}>Hyperion Craft</div><div style={{fontSize:"10px",color:T.textDim}}>{fdateF(c.date)}</div></div>
+              <div style={{display:"flex",gap:"14px",alignItems:"center"}}>
+                <V l="COST" v={fm(cost)} /><V l="SOLD" v={fm(c.sellPrice)} c={T.text} />
+                <V l="PROFIT" v={p!=null?fm(p):"\u2014"} c={p!=null?(p>=0?"#4ade80":"#f87171"):T.textFaint} bold />
+                <button onClick={()=>undoCraft(c.id)} style={{...S.bs,color:T.accent,fontSize:"10px"}}>\u21a9</button>
+                <button onClick={()=>deleteCraft(c.id)} style={{...S.bs,color:"#f8717140"}}>\u00d7</button></div>
+            </div>})}
         </div>
       </>}
 
