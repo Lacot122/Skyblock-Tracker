@@ -40,6 +40,7 @@ export default async (req) => {
       PERFECT_SAPPHIRE_GEM: getPrice("PERFECT_SAPPHIRE_GEM"),
       HOT_POTATO_BOOK: getPrice("HOT_POTATO_BOOK"),
       TITANIC_EXP_BOTTLE: getPrice("TITANIC_EXP_BOTTLE"),
+      ESSENCE_WITHER: getPrice("ESSENCE_WITHER"),
     };
 
     // Try alternate bazaar IDs for L.A.S.R's Eye
