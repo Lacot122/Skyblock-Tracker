@@ -560,6 +560,7 @@ function App(){
                   <span style={{fontSize:"12px",color:stock.qty<=2?"#fb923c":T.text,fontWeight:stock.qty<=2?700:400}}>{stock.qty} in stock</span>
                   <span style={{fontSize:"11px",color:T.textDim}}>@ {fm(stock.perUnit)} each</span>
                   <button onClick={()=>undoLastStock(key)} style={{...S.bs,color:"#f87171",fontSize:"9px"}} title="Undo last entry">↩</button>
+                  <button onClick={()=>{const inv={...(data.craftInventory||{})};delete inv[key];save({...data,craftInventory:inv})}} style={{...S.bs,color:"#f8717140",fontSize:"9px"}} title="Delete all">×</button>
                 </div>
               </div>})}
           </>}
