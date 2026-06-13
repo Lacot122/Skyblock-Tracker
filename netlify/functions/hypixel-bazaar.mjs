@@ -18,10 +18,13 @@ export default async (req) => {
     // Extract prices for craft items
     const getPrice = (id) => {
       const p = data.products[id];
-      if (!p || !p.quick_status) return { buyOrder: 0, instaBuy: 0 };
+      if (!p) return { buyOrder: 0, instaBuy: 0 };
+      // Use exact top order prices from summary, fall back to quick_status
+      const topBuyOrder = (p.buy_summary && p.buy_summary[0]) ? p.buy_summary[0].pricePerUnit : (p.quick_status?.buyPrice || 0);
+      const topSellOrder = (p.sell_summary && p.sell_summary[0]) ? p.sell_summary[0].pricePerUnit : (p.quick_status?.sellPrice || 0);
       return {
-        buyOrder: p.quick_status.sellPrice || 0,
-        instaBuy: p.quick_status.buyPrice || 0
+        buyOrder: topBuyOrder,
+        instaBuy: topSellOrder
       };
     };
 
