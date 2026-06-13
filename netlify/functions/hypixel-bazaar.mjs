@@ -20,11 +20,13 @@ export default async (req) => {
       const p = data.products[id];
       if (!p) return { buyOrder: 0, instaBuy: 0 };
       // Use exact top order prices from summary, fall back to quick_status
+      // buy_summary[0] = top buy order (what buyers offer, LOWER price)
+      // sell_summary[0] = lowest sell order (what sellers ask, HIGHER price = insta-buy cost)
       const topBuyOrder = (p.buy_summary && p.buy_summary[0]) ? p.buy_summary[0].pricePerUnit : (p.quick_status?.buyPrice || 0);
-      const topSellOrder = (p.sell_summary && p.sell_summary[0]) ? p.sell_summary[0].pricePerUnit : (p.quick_status?.sellPrice || 0);
+      const lowestSellOrder = (p.sell_summary && p.sell_summary[0]) ? p.sell_summary[0].pricePerUnit : (p.quick_status?.sellPrice || 0);
       return {
         buyOrder: topBuyOrder,
-        instaBuy: topSellOrder
+        instaBuy: lowestSellOrder
       };
     };
 
