@@ -952,7 +952,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             return<div key={item.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+T.cardBorder+"40",paddingLeft:item.parent?"16px":"0"}}>
               <div style={{flex:1}}>
                 <div style={{fontSize:"11px",color:T.text,fontWeight:item.parent?400:600}}>{item.label}</div>
-                {bzPrices&&Math.abs(diff)>100&&<div style={{fontSize:"9px",color:diff>0?"#4ade80":"#f87171"}}>{diff>0?"Craft "+fm(diff/1000000)+" cheaper":"Buy "+fm(Math.abs(diff)/1000000)+" cheaper"}</div>}
+                {bzPrices&&<div style={{fontSize:"9px",color:T.textDim}}>
+                  Buy: {fm(buyCost/1000000)} · Craft: {fm(craftCost/1000000)}
+                  {Math.abs(diff)>100&&<span style={{color:diff>0?"#4ade80":"#f87171",fontWeight:600}}>{" "}({diff>0?"save "+fm(diff/1000000)+" crafting":"save "+fm(Math.abs(diff)/1000000)+" buying"})</span>}
+                </div>}
               </div>
               <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid "+T.inputBorder}}>
                 <button onClick={()=>save({...data,termCraftMode:{...tc2,[item.k]:"buy"}})} style={{padding:"3px 8px",border:"none",fontSize:"9px",cursor:"pointer",fontFamily:"inherit",background:mode==="buy"?T.input:"transparent",color:mode==="buy"?"#60a5fa":T.textDim}}>Buy</button>
