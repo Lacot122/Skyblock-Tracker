@@ -89,7 +89,8 @@ function App(){
   const[ahFlipId,setAhFlipId]=useState(null);
   const[defaultTax,setDefaultTax]=useState("auction");
   const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);
-  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);const[craftRelistId,setCraftRelistId]=useState(null);const[craftSellTax,setCraftSellTax]=useState("auction");const[editModCraft,setEditModCraft]=useState(null);const[editModKey,setEditModKey]=useState(null);const[editModVal,setEditModVal]=useState("");const[craftRelistAmt,setCraftRelistAmt]=useState("");const[invItem,setInvItem]=useState("");const[invQty,setInvQty]=useState("");const[invPrice,setInvPrice]=useState("");const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
+  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
+  const[craftRelistId,setCraftRelistId]=useState(null);const[craftSellTax,setCraftSellTax]=useState("auction");const[editModCraft,setEditModCraft]=useState(null);const[editModKey,setEditModKey]=useState(null);const[editModVal,setEditModVal]=useState("");const[craftRelistAmt,setCraftRelistAmt]=useState("");const[invItem,setInvItem]=useState("");const[invQty,setInvQty]=useState("");const[invPrice,setInvPrice]=useState("");const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
   const MODS=[
     {key:"shadowWarp",label:"Shadow Warp Scroll",bzIds:["SHADOW_WARP_SCROLL"],qtys:[1],default:true},
     {key:"witherShield",label:"Wither Shield Scroll",bzIds:["WITHER_SHIELD_SCROLL"],qtys:[1],default:true},
@@ -108,53 +109,7 @@ function App(){
     {key:"fiveStars",label:"5 Stars",desc:"3,350 Wither Essence + 35k coins",bzIds:["ESSENCE_WITHER"],qtys:[3350],coinCost:35000,default:false}
   ];
   
-  const tc=data.termCraftMode||{};
-  const TERM_TREE=[
-    {k:"silk",label:"Tarantula Silk",parent:null,buyIds:[["TARANTULA_SILK",128]],craftIds:[["TARANTULA_WEB",16384],["ENCHANTED_FLINT",4096]]},
-    {k:"pearl",label:"Tessellated Ender Pearl",parent:null,buyIds:[["TESSELLATED_ENDER_PEARL",8]],craftIds:[["ENCHANTED_LAPIS_LAZULI_BLOCK",256],["ABSOLUTE_ENDER_PEARL",640]]},
-    {k:"pearlLapis",label:"→ Ench. Lapis Block",parent:"pearl",buyIds:[["ENCHANTED_LAPIS_LAZULI_BLOCK",256]],craftIds:[["ENCHANTED_LAPIS_LAZULI",40960]]},
-    {k:"pearlEnder",label:"→ Absolute Ender Pearl",parent:"pearl",buyIds:[["ABSOLUTE_ENDER_PEARL",640]],craftIds:[["ENCHANTED_ENDER_PEARL",51200]]},
-    {k:"feather",label:"Braided Griffin Feather",parent:null,buyIds:[["BRAIDED_GRIFFIN_FEATHER",4]],craftIds:[["GRIFFIN_FEATHER",640],["SOUL_STRING",1024]]},
-    {k:"blade",label:"Null Blade",parent:null,buyIds:[["NULL_BLADE",3]],craftIds:[["NULL_OVOID",192],["NULL_EDGE",9],["ENCHANTED_QUARTZ_BLOCK",192]]},
-    {k:"bladeOvoid",label:"→ Null Ovoid",parent:"blade",buyIds:[["NULL_OVOID",192]],craftIds:[["NULL_SPHERE",24576],["ENCHANTED_OBSIDIAN",6144]]},
-    {k:"edge",label:"→ Null Edge",parent:"blade",buyIds:[["NULL_EDGE",9]],craftIds:[["ENCHANTED_MITHRIL",1728],["NULL_ATOM",243]]},
-    {k:"bladeQuartz",label:"→ Ench. Quartz Block",parent:"blade",buyIds:[["ENCHANTED_QUARTZ_BLOCK",192]],craftIds:[["ENCHANTED_QUARTZ",30720]]}
-  ];
-  const TERM_MODS=[
-    // ── TARANTULA SILK ──
-    ...(tc.silk==="craft"?[
-      {key:"taraWeb",label:"16,384× Tarantula Web",section:"Tarantula Silk",bzIds:["TARANTULA_WEB"],qtys:[16384],default:true},
-      {key:"enchFlint",label:"4,096× Enchanted Flint",section:"Tarantula Silk",bzIds:["ENCHANTED_FLINT"],qtys:[4096],default:true}
-    ]:[{key:"tarantulaSilk",label:"128× Tarantula Silk",section:"Tarantula Silk",bzIds:["TARANTULA_SILK"],qtys:[128],default:true}]),
-    // ── TESSELLATED ENDER PEARL ──
-    ...(tc.pearl==="craft"?[
-      ...(tc.pearlLapis==="craft"?[
-        {key:"enchLapis",label:"40,960× Enchanted Lapis Lazuli",section:"Tessellated Ender Pearl",bzIds:["ENCHANTED_LAPIS_LAZULI"],qtys:[40960],default:true}
-      ]:[{key:"pearlLapis",label:"256× Ench. Lapis Block",section:"Tessellated Ender Pearl",bzIds:["ENCHANTED_LAPIS_LAZULI_BLOCK"],qtys:[256],default:true}]),
-      ...(tc.pearlEnder==="craft"?[
-        {key:"enchEnderPearl",label:"51,200× Enchanted Ender Pearl",section:"Tessellated Ender Pearl",bzIds:["ENCHANTED_ENDER_PEARL"],qtys:[51200],default:true}
-      ]:[{key:"pearlEnderPearl",label:"640× Absolute Ender Pearl",section:"Tessellated Ender Pearl",bzIds:["ABSOLUTE_ENDER_PEARL"],qtys:[640],default:true}])
-    ]:[{key:"tessellatedPearl",label:"8× Tessellated Ender Pearl",section:"Tessellated Ender Pearl",bzIds:["TESSELLATED_ENDER_PEARL"],qtys:[8],default:true}]),
-    // ── BRAIDED GRIFFIN FEATHER ──
-    ...(tc.feather==="craft"?[
-      {key:"griffinFeather",label:"640× Griffin Feather",section:"Braided Griffin Feather",bzIds:["GRIFFIN_FEATHER"],qtys:[640],default:true},
-      {key:"soulString",label:"1,024× Soul String",section:"Braided Griffin Feather",bzIds:["SOUL_STRING"],qtys:[1024],default:true}
-    ]:[{key:"braidedFeather",label:"4× Braided Griffin Feather",section:"Braided Griffin Feather",bzIds:["BRAIDED_GRIFFIN_FEATHER"],qtys:[4],default:true}]),
-    // ── NULL BLADE ──
-    ...(tc.blade==="craft"?[
-      ...(tc.bladeOvoid==="craft"?[
-        {key:"nullSphere",label:"24,576× Null Sphere",section:"Null Blade",bzIds:["NULL_SPHERE"],qtys:[24576],default:true},
-        {key:"enchObsidian",label:"6,144× Enchanted Obsidian",section:"Null Blade",bzIds:["ENCHANTED_OBSIDIAN"],qtys:[6144],default:true}
-      ]:[{key:"nullOvoid",label:"192× Null Ovoid",section:"Null Blade",bzIds:["NULL_OVOID"],qtys:[192],default:true}]),
-      ...(tc.edge==="craft"?[
-        {key:"enchMithril",label:"1,728× Enchanted Mithril",section:"Null Blade",bzIds:["ENCHANTED_MITHRIL"],qtys:[1728],default:true},
-        {key:"nullAtom",label:"243× Null Atom",section:"Null Blade",bzIds:["NULL_ATOM"],qtys:[243],default:true}
-      ]:[{key:"nullEdge",label:"9× Null Edge",section:"Null Blade",bzIds:["NULL_EDGE"],qtys:[9],default:true}]),
-      ...(tc.bladeQuartz==="craft"?[
-        {key:"enchQuartzRaw",label:"30,720× Enchanted Quartz",section:"Null Blade",bzIds:["ENCHANTED_QUARTZ"],qtys:[30720],default:true}
-      ]:[{key:"enchQuartz",label:"192× Ench. Quartz Block",section:"Null Blade",bzIds:["ENCHANTED_QUARTZ_BLOCK"],qtys:[192],default:true}])
-    ]:[{key:"nullBlade",label:"3× Null Blade",section:"Null Blade",bzIds:["NULL_BLADE"],qtys:[3],default:true}])
-  ];const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
+const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const saveTimer=useRef(null);
   const[data,setData]=useState(DEF),[tab,setTab]=useState("home"),[loaded,setLoaded]=useState(false);
   const[mcName,setMcName]=useState(""),[mcInput,setMcInput]=useState("");
@@ -212,6 +167,53 @@ function App(){
     }catch(e){setVerifyError("Network error: "+e.message)}
     setVerifyLoading(false);
   };
+  const tc=data.termCraftMode||{};
+  const TERM_TREE=[
+    {k:"silk",label:"Tarantula Silk",parent:null,buyIds:[["TARANTULA_SILK",128]],craftIds:[["TARANTULA_WEB",16384],["ENCHANTED_FLINT",4096]]},
+    {k:"pearl",label:"Tessellated Ender Pearl",parent:null,buyIds:[["TESSELLATED_ENDER_PEARL",8]],craftIds:[["ENCHANTED_LAPIS_LAZULI_BLOCK",256],["ABSOLUTE_ENDER_PEARL",640]]},
+    {k:"pearlLapis",label:"→ Ench. Lapis Block",parent:"pearl",buyIds:[["ENCHANTED_LAPIS_LAZULI_BLOCK",256]],craftIds:[["ENCHANTED_LAPIS_LAZULI",40960]]},
+    {k:"pearlEnder",label:"→ Absolute Ender Pearl",parent:"pearl",buyIds:[["ABSOLUTE_ENDER_PEARL",640]],craftIds:[["ENCHANTED_ENDER_PEARL",51200]]},
+    {k:"feather",label:"Braided Griffin Feather",parent:null,buyIds:[["BRAIDED_GRIFFIN_FEATHER",4]],craftIds:[["GRIFFIN_FEATHER",640],["SOUL_STRING",1024]]},
+    {k:"blade",label:"Null Blade",parent:null,buyIds:[["NULL_BLADE",3]],craftIds:[["NULL_OVOID",192],["NULL_EDGE",9],["ENCHANTED_QUARTZ_BLOCK",192]]},
+    {k:"bladeOvoid",label:"→ Null Ovoid",parent:"blade",buyIds:[["NULL_OVOID",192]],craftIds:[["NULL_SPHERE",24576],["ENCHANTED_OBSIDIAN",6144]]},
+    {k:"edge",label:"→ Null Edge",parent:"blade",buyIds:[["NULL_EDGE",9]],craftIds:[["ENCHANTED_MITHRIL",1728],["NULL_ATOM",243]]},
+    {k:"bladeQuartz",label:"→ Ench. Quartz Block",parent:"blade",buyIds:[["ENCHANTED_QUARTZ_BLOCK",192]],craftIds:[["ENCHANTED_QUARTZ",30720]]}
+  ];
+  const TERM_MODS=[
+    // ── TARANTULA SILK ──
+    ...(tc.silk==="craft"?[
+      {key:"taraWeb",label:"16,384× Tarantula Web",section:"Tarantula Silk",bzIds:["TARANTULA_WEB"],qtys:[16384],default:true},
+      {key:"enchFlint",label:"4,096× Enchanted Flint",section:"Tarantula Silk",bzIds:["ENCHANTED_FLINT"],qtys:[4096],default:true}
+    ]:[{key:"tarantulaSilk",label:"128× Tarantula Silk",section:"Tarantula Silk",bzIds:["TARANTULA_SILK"],qtys:[128],default:true}]),
+    // ── TESSELLATED ENDER PEARL ──
+    ...(tc.pearl==="craft"?[
+      ...(tc.pearlLapis==="craft"?[
+        {key:"enchLapis",label:"40,960× Enchanted Lapis Lazuli",section:"Tessellated Ender Pearl",bzIds:["ENCHANTED_LAPIS_LAZULI"],qtys:[40960],default:true}
+      ]:[{key:"pearlLapis",label:"256× Ench. Lapis Block",section:"Tessellated Ender Pearl",bzIds:["ENCHANTED_LAPIS_LAZULI_BLOCK"],qtys:[256],default:true}]),
+      ...(tc.pearlEnder==="craft"?[
+        {key:"enchEnderPearl",label:"51,200× Enchanted Ender Pearl",section:"Tessellated Ender Pearl",bzIds:["ENCHANTED_ENDER_PEARL"],qtys:[51200],default:true}
+      ]:[{key:"pearlEnderPearl",label:"640× Absolute Ender Pearl",section:"Tessellated Ender Pearl",bzIds:["ABSOLUTE_ENDER_PEARL"],qtys:[640],default:true}])
+    ]:[{key:"tessellatedPearl",label:"8× Tessellated Ender Pearl",section:"Tessellated Ender Pearl",bzIds:["TESSELLATED_ENDER_PEARL"],qtys:[8],default:true}]),
+    // ── BRAIDED GRIFFIN FEATHER ──
+    ...(tc.feather==="craft"?[
+      {key:"griffinFeather",label:"640× Griffin Feather",section:"Braided Griffin Feather",bzIds:["GRIFFIN_FEATHER"],qtys:[640],default:true},
+      {key:"soulString",label:"1,024× Soul String",section:"Braided Griffin Feather",bzIds:["SOUL_STRING"],qtys:[1024],default:true}
+    ]:[{key:"braidedFeather",label:"4× Braided Griffin Feather",section:"Braided Griffin Feather",bzIds:["BRAIDED_GRIFFIN_FEATHER"],qtys:[4],default:true}]),
+    // ── NULL BLADE ──
+    ...(tc.blade==="craft"?[
+      ...(tc.bladeOvoid==="craft"?[
+        {key:"nullSphere",label:"24,576× Null Sphere",section:"Null Blade",bzIds:["NULL_SPHERE"],qtys:[24576],default:true},
+        {key:"enchObsidian",label:"6,144× Enchanted Obsidian",section:"Null Blade",bzIds:["ENCHANTED_OBSIDIAN"],qtys:[6144],default:true}
+      ]:[{key:"nullOvoid",label:"192× Null Ovoid",section:"Null Blade",bzIds:["NULL_OVOID"],qtys:[192],default:true}]),
+      ...(tc.edge==="craft"?[
+        {key:"enchMithril",label:"1,728× Enchanted Mithril",section:"Null Blade",bzIds:["ENCHANTED_MITHRIL"],qtys:[1728],default:true},
+        {key:"nullAtom",label:"243× Null Atom",section:"Null Blade",bzIds:["NULL_ATOM"],qtys:[243],default:true}
+      ]:[{key:"nullEdge",label:"9× Null Edge",section:"Null Blade",bzIds:["NULL_EDGE"],qtys:[9],default:true}]),
+      ...(tc.bladeQuartz==="craft"?[
+        {key:"enchQuartzRaw",label:"30,720× Enchanted Quartz",section:"Null Blade",bzIds:["ENCHANTED_QUARTZ"],qtys:[30720],default:true}
+      ]:[{key:"enchQuartz",label:"192× Ench. Quartz Block",section:"Null Blade",bzIds:["ENCHANTED_QUARTZ_BLOCK"],qtys:[192],default:true}])
+    ]:[{key:"nullBlade",label:"3× Null Blade",section:"Null Blade",bzIds:["NULL_BLADE"],qtys:[3],default:true}])
+  ];
   const save=useCallback((d)=>{
     setData(d);
     if(saveTimer.current)clearTimeout(saveTimer.current);
