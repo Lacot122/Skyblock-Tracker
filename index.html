@@ -88,7 +88,7 @@ function App(){
   const[ahOpen,setAhOpen]=useState(false);
   const[ahFlipId,setAhFlipId]=useState(null);
   const[defaultTax,setDefaultTax]=useState("auction");
-  const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);
+  const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);const[bzTimestamp,setBzTimestamp]=useState(0);
   const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
   const[craftRelistId,setCraftRelistId]=useState(null);const[craftSellTax,setCraftSellTax]=useState("auction");const[editModCraft,setEditModCraft]=useState(null);const[editModKey,setEditModKey]=useState(null);const[editModVal,setEditModVal]=useState("");const[craftRelistAmt,setCraftRelistAmt]=useState("");const[invItem,setInvItem]=useState("");const[invQty,setInvQty]=useState("");const[invPrice,setInvPrice]=useState("");const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
   const MODS=[
@@ -215,13 +215,17 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
     ]:[{key:"nullBlade",label:"3× Null Blade",section:"Null Blade",bzIds:["NULL_BLADE"],qtys:[3],default:true}])
   ];
   const save=useCallback((d)=>{
-    setData(d);
-    if(saveTimer.current)clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(async()=>{
-      if(!user)return;
-      await sb.from("tracker_data").update({data:{...d,mcUuid,theme,defaultTax},updated_at:new Date().toISOString()}).eq("id",user.id);
-      setLastSaved(new Date());
-    },1000);
+    if(typeof d==="function"){
+      setData(prev=>{const next=d(prev);if(saveTimer.current)clearTimeout(saveTimer.current);saveTimer.current=setTimeout(async()=>{if(!user)return;const latest=typeof d==="function"?next:d;await sb.from("tracker_data").update({data:{...latest,mcUuid,theme,defaultTax},updated_at:new Date().toISOString()}).eq("id",user.id);setLastSaved(new Date())},1000);return next});
+    }else{
+      setData(d);
+      if(saveTimer.current)clearTimeout(saveTimer.current);
+      saveTimer.current=setTimeout(async()=>{
+        if(!user)return;
+        await sb.from("tracker_data").update({data:{...d,mcUuid,theme,defaultTax},updated_at:new Date().toISOString()}).eq("id",user.id);
+        setLastSaved(new Date());
+      },1000);
+    }
   },[user,mcUuid,theme,defaultTax]);
   useEffect(()=>{if(user&&authState==="app"){if(saveTimer.current)clearTimeout(saveTimer.current);saveTimer.current=setTimeout(async()=>{await sb.from("tracker_data").update({data:{...data,mcUuid,theme,defaultTax}}).eq("id",user.id)},1000)}},[theme,defaultTax]);
   useEffect(()=>{if(!resetConfirm)return;if(resetCountdown<=0)return;const t=setTimeout(()=>setResetCountdown(c=>c-1),1000);return()=>clearTimeout(t)},[resetConfirm,resetCountdown]);
@@ -229,7 +233,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
 
   // AH
   const fetchAuctions=async(flipId)=>{if(!mcUuid)return;setAhLoading(true);setAhOpen(true);setAhFlipId(flipId);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)));setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){setAhAuctions([])}setAhLoading(false)};
-  const fetchBazaar=async()=>{setBzLoading(true);try{const r=await fetch("/api/hypixel-bazaar");const d=await r.json();setBzLoading(false);if(d.prices){setBzPrices(d.prices);return d.prices}return null}catch(e){setBzLoading(false);return null}};
+  const fetchBazaar=async(force)=>{if(!force&&bzPrices&&Date.now()-bzTimestamp<30000)return bzPrices;setBzLoading(true);try{const r=await fetch("/api/hypixel-bazaar");const d=await r.json();setBzLoading(false);if(d.prices){setBzPrices(d.prices);setBzTimestamp(Date.now());return d.prices}return bzPrices}catch(e){setBzLoading(false);return bzPrices}};
   const getModCost=(mod,prices,settings)=>{if(mod.flatCost)return mod.flatCost;if(!prices)return 0;const mode=(settings||{})[mod.key]||"buyOrder";let total=mod.coinCost||0;for(let i=0;i<mod.bzIds.length;i++){const p=prices[mod.bzIds[i]];if(p){total+=(mode==="instaBuy"?p.instaBuy:p.buyOrder)*(mod.qtys[i]||1)}}return total};
   const newCraft=()=>{const c={id:gid(),name:"Hyperion Craft",handlePrice:"",extraCost:"",modifiers:{},sellPrice:"",titanicQty:"5",date:today(),complete:false};MODS.forEach(m=>{if(m.default)c.modifiers[m.key]={enabled:true,filled:false,filledPrice:null}});setCraftBuilding(c);if(!bzPrices)fetchBazaar()};
   const getCraftActualCost=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;MODS.forEach(m=>{const mod=c.modifiers[m.key];if(mod&&mod.enabled&&mod.filled){total+=(mod.filledPrice||0)/1000000}});(c.relists||[]).forEach(r=>{total+=r.fee});return total};
@@ -237,10 +241,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const saveCraftNew=()=>{if(!craftBuilding)return;const c={...craftBuilding,createdAt:Date.now()};const existing=(data.crafts||[]).find(x=>x.id===c.id);if(existing){save({...data,crafts:data.crafts.map(x=>x.id===c.id?c:x)})}else{save({...data,crafts:[...(data.crafts||[]),c]})}setCraftBuilding(null)};
   const addStock=(modKey,qty,totalPrice)=>{const q=parseInt(qty)||0;const p=parseFloat(totalPrice)||0;if(!q||!p||!modKey)return;const inv={...(data.craftInventory||{})};const existing=inv[modKey]||{qty:0,totalSpent:0,entries:[]};const entries=[...(existing.entries||[]),{qty:q,price:p,id:gid()}];const newQty=existing.qty+q;const newSpent=existing.totalSpent+p;inv[modKey]={qty:newQty,totalSpent:newSpent,perUnit:newQty>0?newSpent/newQty:0,entries};save({...data,craftInventory:inv});setInvItem("");setInvQty("1");setInvPrice("")};
   const undoLastStock=(modKey)=>{const inv={...(data.craftInventory||{})};const stock=inv[modKey];if(!stock||!stock.entries||stock.entries.length===0)return;const last=stock.entries[stock.entries.length-1];const entries=stock.entries.slice(0,-1);const newQty=Math.max(0,stock.qty-last.qty);const newSpent=Math.max(0,stock.totalSpent-last.price);inv[modKey]={qty:newQty,totalSpent:newSpent,perUnit:newQty>0?newSpent/newQty:0,entries};if(newQty<=0&&entries.length===0)delete inv[modKey];save({...data,craftInventory:inv})};
-  const fillFromStock=(craftId,modKey)=>{const inv={...(data.craftInventory||{})};const stock=inv[modKey];if(!stock||stock.qty<=0)return;const price=stock.perUnit*1000000;inv[modKey]={...stock,qty:stock.qty-1};save({...data,craftInventory:inv,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:true,filledPrice:price,source:"stock"}}}:c)})};
+  const fillFromStock=(craftId,modKey)=>{save(prev=>{const inv={...(prev.craftInventory||{})};const stock=inv[modKey];if(!stock||stock.qty<=0)return prev;const price=stock.perUnit*1000000;inv[modKey]={...stock,qty:stock.qty-1};return{...prev,craftInventory:inv,crafts:(prev.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:true,filledPrice:price,source:"stock"}}}:c)}})};
   const fillCustom=(craftId,modKey)=>{setEditModCraft(craftId);setEditModKey(modKey);setEditModVal("")};const saveModPrice=(craftId,modKey,val)=>{const price=parseFloat(val)||0;if(!price)return;save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:true,filledPrice:price*1000000,source:"custom"}}}:c)});setEditModCraft(null);setEditModKey(null);setEditModVal("")};
-  const fillMod=async(craftId,modKey)=>{const fresh=await fetchBazaar();const prices=fresh||bzPrices;const settings=data.craftSettings||{};const mode=settings[modKey]||"buyOrder";const mod=MODS.find(m=>m.key===modKey);if(!mod)return;const qty=mod.hasQty?(parseInt((data.crafts||[]).find(c=>c.id===craftId)?.titanicQty)||0):1;let cost=getModCost(mod,prices,settings);if(mod.hasQty)cost*=qty;save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:true,filledPrice:cost,source:"bazaar"}}}:c)})};
-  const unfillMod=(craftId,modKey)=>{const craft=(data.crafts||[]).find(c=>c.id===craftId);const mod=craft?.modifiers[modKey];const inv={...(data.craftInventory||{})};if(mod&&mod.source==="stock"){const stock=inv[modKey]||{qty:0,totalSpent:0,perUnit:0};inv[modKey]={...stock,qty:stock.qty+1}}save({...data,craftInventory:inv,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:false,filledPrice:null,source:null}}}:c)})};
+  const fillMod=async(craftId,modKey)=>{const prices=await fetchBazaar();if(!prices)return;save(prev=>{const settings=prev.craftSettings||{};let mod=MODS.find(m=>m.key===modKey);if(!mod)mod=TERM_MODS.find(m=>m.key===modKey);if(!mod)return prev;const craft=(prev.crafts||[]).find(c=>c.id===craftId);const qty=mod.hasQty?(parseInt(craft?.titanicQty)||0):1;let cost=getModCost(mod,prices,settings);if(mod.hasQty)cost*=qty;return{...prev,crafts:(prev.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:true,filledPrice:cost,source:"bazaar"}}}:c)}})};
+  const unfillMod=(craftId,modKey)=>{save(prev=>{const craft=(prev.crafts||[]).find(c=>c.id===craftId);const mod=craft?.modifiers[modKey];const inv={...(prev.craftInventory||{})};if(mod&&mod.source==="stock"){const stock=inv[modKey]||{qty:0,totalSpent:0,perUnit:0};inv[modKey]={...stock,qty:stock.qty+1}}return{...prev,craftInventory:inv,crafts:(prev.crafts||[]).map(c=>c.id===craftId?{...c,modifiers:{...c.modifiers,[modKey]:{...c.modifiers[modKey],filled:false,filledPrice:null,source:null}}}:c)}})};
   const completeCraft=(craftId,sellPrice,taxType)=>{save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,complete:true,sellPrice:parseFloat(sellPrice)||0,sellTax:taxType||"auction"}:c)})};
   const undoCraft=(craftId)=>{save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,complete:false,sellPrice:null}:c)})};
   const addCraftRelist=(craftId)=>{const val=parseFloat(craftRelistAmt);if(!val)return;const fee=val*0.025;save({...data,crafts:(data.crafts||[]).map(c=>c.id===craftId?{...c,relists:[...(c.relists||[]),{id:gid(),listedFor:val,fee}]}:c)});setCraftRelistAmt("");setCraftRelistId(null)};
@@ -253,7 +257,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const getTermProfit=(c)=>{if(!c.sellPrice)return null;const cost=getTermActualCost(c);const rate=c.sellTax==="none"?0:c.sellTax==="listed"?0.025:0.035;return c.sellPrice-cost-c.sellPrice*rate};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
-  const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhOpen(false);setAhFlipId(null)};
+  const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhAuctions(prev=>prev.filter(a=>a.auctionId!==auctionId));setAhOpen(false);setAhFlipId(null)};
 
   const startReset=()=>{setResetConfirm(true);setResetCountdown(5)};
   const cancelReset=()=>{setResetConfirm(false);setResetCountdown(5)};
@@ -295,8 +299,9 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const active=useMemo(()=>data.flips.filter(f=>!f.complete),[data.flips]);
   const completed=useMemo(()=>data.flips.filter(f=>f.complete),[data.flips]);
   const stats=useMemo(()=>{let tot=0,w=0,l=0;completed.forEach(f=>{const p=getProfit(f);if(p!=null){tot+=p;if(p>=0)w++;else l++}});(data.crafts||[]).filter(c=>c.complete).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null){tot+=p;if(p>=0)w++;else l++}});const cnt=completed.length+(data.crafts||[]).filter(c=>c.complete&&!c.craftType).length;return{total:tot,wins:w,losses:l,wr:(w+l)>0?w/(w+l):0,count:cnt}},[completed,data.taxRate,data.crafts]);
-  const streak=useMemo(()=>{let s=0;for(let i=completed.length-1;i>=0;i--){const p=getProfit(completed[i]);if(p!=null&&p>0)s++;else break}return s},[completed,data.taxRate]);
-  const bestStreak=useMemo(()=>{let best=0,cur=0;completed.forEach(f=>{const p=getProfit(f);if(p==null)return;if(p>0){cur++;if(cur>best)best=cur}else{cur=0}});return best},[completed,data.taxRate]);
+  const sortedCompleted=useMemo(()=>[...completed].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||a.createdAt-b.createdAt),[completed]);
+  const streak=useMemo(()=>{let s=0;for(let i=sortedCompleted.length-1;i>=0;i--){const p=getProfit(sortedCompleted[i]);if(p==null)continue;if(p>0)s++;else break}return s},[sortedCompleted,data.taxRate]);
+  const bestStreak=useMemo(()=>{let best=0,cur=0;sortedCompleted.forEach(f=>{const p=getProfit(f);if(p==null)return;if(p>0){cur++;if(cur>best)best=cur}else{cur=0}});return best},[sortedCompleted,data.taxRate]);
   const top10=useMemo(()=>completed.map(f=>({...f,profit:getProfit(f)})).filter(f=>f.profit!=null).sort((a,b)=>b.profit-a.profit).slice(0,10),[completed,data.taxRate]);
 
   const chartData=useMemo(()=>{const byDate={};let run=0;const sorted=[...completed].sort((a,b)=>(a.date||"").localeCompare(b.date||""));sorted.forEach(f=>{const d=f.date||"unknown";const p=getProfit(f)||0;run+=p;byDate[d]={date:d,total:+run.toFixed(2)}});const all=Object.values(byDate).filter(d=>d.date!=="unknown").sort((a,b)=>a.date.localeCompare(b.date));if(chartStartDate){const startRun=all.filter(d=>d.date<chartStartDate).reduce((s,d)=>d.total,0);return all.filter(d=>d.date>=chartStartDate).map(d=>({...d,total:+(d.total-startRun).toFixed(2)}))}return all},[completed,data.taxRate,chartStartDate]);
@@ -364,7 +369,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             <V l="BUY" v={fm(f.buy)} /><V l="SELL" v={ts?fm(ts):"—"} c={ts?T.sellText:T.textFaint} />
             <V l="PROFIT" v={profit!=null?fm(profit):"—"} c={profit==null?"#334155":profit>=0?"#4ade80":"#f87171"} bold />
             <div style={{display:"flex",gap:"2px"}} onClick={e=>e.stopPropagation()}>
-              {isActive&&<><button onClick={()=>{setAddSaleId(adding?null:f.id);setAddSaleType(defaultTax)}} style={{...S.bs,color:"#60a5fa"}}>+Sale</button>
+              {isActive&&<><button onClick={()=>{setAddSaleId(adding?null:f.id);setAddSaleType(defaultTax);if(!adding&&mcUuid)fetch("/api/hypixel-auctions?uuid="+mcUuid).then(r=>r.json()).then(d=>{setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)))}).catch(()=>{})}} style={{...S.bs,color:"#60a5fa"}}>+Sale</button>
               <button onClick={()=>setRelistFlipId(relistFlipId===f.id?null:f.id)} style={{...S.bs,color:"#e879f9"}}>Relist</button>
               <button onClick={()=>startEdit(f)} style={{...S.bs,color:"#64748b"}}>Edit</button></>}
               {isActive?<button onClick={()=>toggleComplete(f.id)} style={{...S.bs,color:"#4ade80",fontWeight:700}}>✓ Done</button>:<button onClick={()=>toggleComplete(f.id)} style={{...S.bs,color:"#fcd34d"}}>↩ Undo</button>}
@@ -443,7 +448,8 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             </>)}</div>
           <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
-            <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Invested" c="#e879f9" />
+            <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" />
+            <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
             {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}
             <Stat v={active.length} l="Incomplete" c="#60a5fa" />{apiError&&<div style={{gridColumn:"1/-1",textAlign:"center",fontSize:"10px",color:"#f87171",padding:"4px"}}>{apiError}</div>}
             <Stat v={ahFullData.active.length} l="Active Auctions" c="#22d3ee" />
@@ -520,8 +526,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
       {tab==="investments"&&<>
         {data.investments.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"12px"}}>
           <Stat v={data.investments.reduce((s,i)=>s+i.totalQty,0)} l="Total Items" c="#fcd34d" />
-          <Stat v={fm(data.investments.reduce((s,i)=>s+i.totalSpent,0))} l="Coins Spent" c="#f87171" />
-          <Stat v={fm(data.investments.reduce((s,i)=>s+getInvProfit(i),0))} l="Net Profit" c={data.investments.reduce((s,i)=>s+getInvProfit(i),0)>=0?"#4ade80":"#f87171"} />
+          <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" />
+            <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
+          <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" />
+            <Stat v={fm(data.investments.reduce((s,i)=>s+getInvProfit(i),0))} l="Net Profit" c={data.investments.reduce((s,i)=>s+getInvProfit(i),0)>=0?"#4ade80":"#f87171"} />
           <Stat v={data.investments.reduce((s,i)=>s+(i.sales||[]).length,0)} l="Sales" c="#60a5fa" /></div>}
         <div style={S.card}><div style={S.cT}>Add Investment</div><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
           <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item Name</label><input style={S.inp} value={invForm.skin} onChange={e=>setInvForm({...invForm,skin:e.target.value})} placeholder="Item name" onKeyDown={e=>e.key==="Enter"&&addInvestment()} /></div>
@@ -530,7 +538,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           <button onClick={addInvestment} style={S.bMain}>Add</button></div>
           <div style={{fontSize:"10px",color:"#475569",marginTop:"5px"}}>Same name gets added to existing group</div></div>
         <div style={{...S.card,padding:0}}>{data.investments.length===0&&<div style={{color:"#475569",textAlign:"center",padding:"30px"}}>No investments yet</div>}
-          {data.investments.map(inv=>{const soldQtyD=(inv.sales||[]).reduce((t,s)=>t+(s.qty||1),0);const origQtyD=inv.totalQty+soldQtyD;const avg=origQtyD>0?inv.totalSpent/origQtyD:0;const invProfit=getInvProfit(inv);const isSelling=invSaleId===inv.id;
+          {data.investments.filter(inv=>inv.totalQty>0).map(inv=>{const soldQtyD=(inv.sales||[]).reduce((t,s)=>t+(s.qty||1),0);const origQtyD=inv.totalQty+soldQtyD;const avg=origQtyD>0?inv.totalSpent/origQtyD:0;const invProfit=getInvProfit(inv);const isSelling=invSaleId===inv.id;
             return<div key={inv.id} style={{borderBottom:"1px solid #1e293b",padding:"12px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px",flexWrap:"wrap",gap:"8px"}}>
                 <div><span style={{fontWeight:700,color:T.accent,fontSize:"14px"}}>{inv.skin}</span><span style={{fontSize:"11px",color:T.textDim,marginLeft:"8px"}}>{inv.totalQty} owned</span>{(inv.sales||[]).length>0&&<span style={{fontSize:"11px",color:"#4ade80",marginLeft:"6px"}}>{(inv.sales||[]).reduce((s,x)=>s+(x.qty||1),0)} sold</span>}</div>
