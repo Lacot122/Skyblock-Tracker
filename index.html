@@ -448,7 +448,6 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             </>)}</div>
           <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
-            <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" />
             <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
             {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}
             <Stat v={active.length} l="Incomplete" c="#60a5fa" />{apiError&&<div style={{gridColumn:"1/-1",textAlign:"center",fontSize:"10px",color:"#f87171",padding:"4px"}}>{apiError}</div>}
@@ -456,7 +455,9 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             <Stat v={stats.count} l="Completed" c={T.text} />
             <Stat v={stats.wins} l="Wins" c="#4ade80" />
             <Stat v={stats.losses} l="Losses" c="#f87171" />
-            <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" /></div></div>
+            <Stat v={(stats.wr*100).toFixed(1)+"%"} l="Win Rate" c="#a78bfa" /></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:"8px",marginTop:"8px"}}>
+            <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" /></div></div>
 
         {chartData.length>1&&<div style={S.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}><div style={S.cT}>Cumulative Profit</div><div style={{display:"flex",gap:"6px",alignItems:"center"}}><span style={{fontSize:"9px",color:T.textDim}}>From:</span><input type="date" style={{...S.inp,width:"120px",padding:"3px 6px",fontSize:"10px"}} value={chartStartDate} onChange={e=>setChartStartDate(e.target.value)} />{chartStartDate&&<button onClick={()=>setChartStartDate("")} style={{...S.bs,color:"#f87171",fontSize:"9px"}}>Clear</button>}</div></div>
           <div style={{height:"170px"}}><ChartBox type="line" labels={chartData.map(d=>fdate(d.date))} datasets={[{label:"Running Total",data:chartData.map(d=>d.total),borderColor:"#a78bfa",backgroundColor:"#a78bfa20",fill:true,tension:0.3,pointRadius:0,borderWidth:2}]} /></div></div>}
@@ -526,10 +527,8 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
       {tab==="investments"&&<>
         {data.investments.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"12px"}}>
           <Stat v={data.investments.reduce((s,i)=>s+i.totalQty,0)} l="Total Items" c="#fcd34d" />
-          <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" />
-            <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
-          <Stat v={fm((()=>{const d7=new Date();d7.setDate(d7.getDate()-7);const ds=d7.toISOString().slice(0,10);let t=0;completed.filter(f=>f.date>=ds).forEach(f=>{const p=getProfit(f);if(p!=null)t+=p});(data.crafts||[]).filter(c=>c.complete&&c.date>=ds).forEach(c=>{const p=c.craftType==="term"?getTermProfit(c):getCraftProfit(c);if(p!=null)t+=p});return t})())} l="Last 7 Days" c="#fcd34d" />
-            <Stat v={fm(data.investments.reduce((s,i)=>s+getInvProfit(i),0))} l="Net Profit" c={data.investments.reduce((s,i)=>s+getInvProfit(i),0)>=0?"#4ade80":"#f87171"} />
+          <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
+          <Stat v={fm(data.investments.reduce((s,i)=>s+getInvProfit(i),0))} l="Net Profit" c={data.investments.reduce((s,i)=>s+getInvProfit(i),0)>=0?"#4ade80":"#f87171"} />
           <Stat v={data.investments.reduce((s,i)=>s+(i.sales||[]).length,0)} l="Sales" c="#60a5fa" /></div>}
         <div style={S.card}><div style={S.cT}>Add Investment</div><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
           <div style={{flex:2,minWidth:"120px"}}><label style={S.lbl}>Item Name</label><input style={S.inp} value={invForm.skin} onChange={e=>setInvForm({...invForm,skin:e.target.value})} placeholder="Item name" onKeyDown={e=>e.key==="Enter"&&addInvestment()} /></div>
