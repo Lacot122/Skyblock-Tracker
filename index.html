@@ -606,7 +606,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             <div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end",marginBottom:"10px"}}>
               <div><label style={S.lbl}>Item</label><select style={{...S.inp,width:"180px"}} value={invItem} onChange={e=>setInvItem(e.target.value)}>
                 <option value="">Select item...</option>
-                {MODS.filter(m=>!m.group||m.key==="gemsFlawless"||m.key==="gemsPerfect").map(m=><option key={m.key} value={m.key}>{m.label}</option>)}</select></div>
+                <option value="handle">Necron's Handle</option>
+                <option value="judgementCore">Judgement Core</option>
+                {MODS.filter(m=>!m.group||m.key==="gemsFlawless"||m.key==="gemsPerfect").map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
+                {TERM_MODS.map(m=><option key={"t_"+m.key} value={m.key}>{m.label}</option>)}</select></div>
               <div><label style={S.lbl}>Quantity</label><input style={{...S.inp,width:"70px"}} type="number" value={invQty} onChange={e=>setInvQty(e.target.value)} placeholder="e.g. 10" /></div>
               <div><label style={S.lbl}>Total Price (millions)</label><input style={{...S.inp,width:"120px"}} type="number" value={invPrice} onChange={e=>setInvPrice(e.target.value)} placeholder="e.g. 2100" onKeyDown={e=>e.key==="Enter"&&addStock(invItem,invQty,invPrice)} /></div>
               <button onClick={()=>addStock(invItem,invQty,invPrice)} style={S.bg}>Add Stock</button>
@@ -614,7 +617,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             </div>
             {Object.keys(data.craftInventory||{}).filter(k=>(data.craftInventory[k]?.qty||0)>0).length===0&&<div style={{color:T.textDim,fontSize:"11px",textAlign:"center",padding:"8px"}}>No items in stock</div>}
             {Object.entries(data.craftInventory||{}).filter(([k,v])=>v.qty>0).map(([key,stock])=>{
-              const mod=MODS.find(m=>m.key===key);const label=mod?mod.label:key;
+              const mod=MODS.find(m=>m.key===key)||TERM_MODS.find(m=>m.key===key);const label=key==="handle"?"Necron's Handle":key==="judgementCore"?"Judgement Core":mod?mod.label:key;
               return<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+T.cardBorder+"40"}}>
                 <div><span style={{fontWeight:600,color:T.text,fontSize:"12px"}}>{label}</span></div>
                 <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
@@ -637,7 +640,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           <div style={{marginBottom:"8px"}}><label style={S.lbl}>Craft Name</label>
             <input style={{...S.inp,maxWidth:"300px"}} value={craftBuilding.name||""} onChange={e=>setCraftBuilding({...craftBuilding,name:e.target.value})} placeholder="e.g. Hyperion #1" /></div>
           <div style={{marginBottom:"12px"}}><label style={S.lbl}>Handle Buy Price (millions)</label>
-            <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 410" autoFocus /></div>
+            <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
+              <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 410" autoFocus />
+              {(data.craftInventory||{}).handle?.qty>0&&<button onClick={()=>{const stock=(data.craftInventory||{}).handle;setCraftBuilding({...craftBuilding,handlePrice:String(stock.perUnit)});const inv={...(data.craftInventory||{})};inv.handle={...stock,qty:stock.qty-1,totalSpent:stock.totalSpent-stock.perUnit};save({...data,craftInventory:inv})}} style={{padding:"4px 10px",border:"1px solid #fb923c40",borderRadius:"4px",background:"transparent",color:"#fb923c",fontFamily:"inherit",fontSize:"10px",cursor:"pointer"}}>Stock ({(data.craftInventory||{}).handle.qty})</button>}
+            </div></div>
           <div style={{fontSize:"10px",color:T.textDim,marginBottom:"8px"}}>Select modifiers. Prices shown are estimates only and won't be added until you mark them as bought.</div>
           {MODS.map(m=>{const mod=craftBuilding.modifiers[m.key]||{};const enabled=mod.enabled;const settings=data.craftSettings||{};
             const cost=getModCost(m,bzPrices,settings);const qty=m.hasQty?(parseInt(craftBuilding.titanicQty)||0):1;const totalCost=m.hasQty?cost*qty:cost;
@@ -761,7 +767,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           <div style={{marginBottom:"8px"}}><label style={S.lbl}>Craft Name</label>
             <input style={{...S.inp,maxWidth:"300px"}} value={termBuilding.name||""} onChange={e=>setTermBuilding({...termBuilding,name:e.target.value})} placeholder="e.g. Terminator #1" /></div>
           <div style={{marginBottom:"12px"}}><label style={S.lbl}>Judgement Core Price (millions)</label>
-            <input style={{...S.inp,maxWidth:"200px"}} type="number" value={termBuilding.handlePrice} onChange={e=>setTermBuilding({...termBuilding,handlePrice:e.target.value})} placeholder="e.g. 300" autoFocus /></div>
+            <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
+              <input style={{...S.inp,maxWidth:"200px"}} type="number" value={termBuilding.handlePrice} onChange={e=>setTermBuilding({...termBuilding,handlePrice:e.target.value})} placeholder="e.g. 300" autoFocus />
+              {(data.craftInventory||{}).judgementCore?.qty>0&&<button onClick={()=>{const stock=(data.craftInventory||{}).judgementCore;setTermBuilding({...termBuilding,handlePrice:String(stock.perUnit)});const inv={...(data.craftInventory||{})};inv.judgementCore={...stock,qty:stock.qty-1,totalSpent:stock.totalSpent-stock.perUnit};save({...data,craftInventory:inv})}} style={{padding:"4px 10px",border:"1px solid #fb923c40",borderRadius:"4px",background:"transparent",color:"#fb923c",fontFamily:"inherit",fontSize:"10px",cursor:"pointer"}}>Stock ({(data.craftInventory||{}).judgementCore.qty})</button>}
+            </div></div>
           <div style={{fontSize:"10px",color:T.textDim,marginBottom:"8px"}}>Prices are estimates only. Materials are based on your Buy/Craft settings above.</div>
           {(()=>{let lastSection="";return TERM_MODS.map(m=>{const mod=termBuilding.modifiers[m.key]||{};const enabled=mod.enabled;const settings=data.craftSettings||{};
             const cost=getModCost(m,bzPrices,settings);const showSection=m.section&&m.section!==lastSection;if(m.section)lastSection=m.section;
