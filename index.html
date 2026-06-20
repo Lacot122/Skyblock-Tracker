@@ -869,9 +869,10 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
             <div></div>
             <button onClick={fetchAuctionTab} style={{...S.bg,fontSize:"11px"}}>{ahTabLoading?"Refreshing...":"↻ Refresh"}</button></div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"12px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"12px"}}>
             <Stat v={fm(ahFullData.stats.listedValue/1000000)} l="Listed Value" c="#a78bfa" />
-            <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99)} l="Projected Purse" c="#22d3ee" /></div>
+            <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99)} l="Projected Purse" c="#22d3ee" />
+            <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99+Object.values(data.craftInventory||{}).reduce((s,v)=>s+(v.qty||0)*(v.perUnit||0),0))} l="Projected With Bulk Inv" c="#a78bfa" /></div>
 
           <div style={S.card}><div style={S.cT}>Active Auctions ({ahFullData.active.length})</div>
             {ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
