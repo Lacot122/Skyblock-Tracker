@@ -66,10 +66,10 @@ export default async (req) => {
       NULL_SPHERE: getPrice("NULL_SPHERE"),
       ENCHANTED_OBSIDIAN: getPrice("ENCHANTED_OBSIDIAN"),
       ENCHANTED_QUARTZ: getPrice("ENCHANTED_QUARTZ"),
-      CRUDE_GABAGOOL: getPrice("CRUDE_GABAGOOL"),
+      VERY_CRUDE_GABAGOOL: getPrice("VERY_CRUDE_GABAGOOL"),
       ENCHANTED_COAL: getPrice("ENCHANTED_COAL"),
       ENCHANTED_SULPHUR: getPrice("ENCHANTED_SULPHUR"),
-      GABAGOOL_DISTILLATE: getPrice("GABAGOOL_DISTILLATE"),
+      CRUDE_GABAGOOL_DISTILLATE: getPrice("CRUDE_GABAGOOL_DISTILLATE"),
       INFERNO_FUEL_BLOCK: getPrice("INFERNO_FUEL_BLOCK"),
     };
 
@@ -85,14 +85,7 @@ export default async (req) => {
       }
     }
 
-    // Find correct IDs for items showing 0
-    const search = {};
-    for (const key of Object.keys(data.products)) {
-      if (key.includes("GABAGOOL") || key.includes("INFERNO") || key.includes("DISTILL") || key.includes("SULPHUR") || key.includes("FUEL")) {
-        search[key] = getPrice(key);
-      }
-    }
-    return new Response(JSON.stringify({ prices, search, timestamp: Date.now() }), { status: 200, headers });
+    return new Response(JSON.stringify({ prices, timestamp: Date.now() }), { status: 200, headers });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
