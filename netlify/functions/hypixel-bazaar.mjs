@@ -66,6 +66,11 @@ export default async (req) => {
       NULL_SPHERE: getPrice("NULL_SPHERE"),
       ENCHANTED_OBSIDIAN: getPrice("ENCHANTED_OBSIDIAN"),
       ENCHANTED_QUARTZ: getPrice("ENCHANTED_QUARTZ"),
+      CRUDE_GABAGOOL: getPrice("CRUDE_GABAGOOL"),
+      ENCHANTED_COAL: getPrice("ENCHANTED_COAL"),
+      ENCHANTED_SULPHUR: getPrice("ENCHANTED_SULPHUR"),
+      GABAGOOL_DISTILLATE: getPrice("GABAGOOL_DISTILLATE"),
+      INFERNO_FUEL_BLOCK: getPrice("INFERNO_FUEL_BLOCK"),
     };
 
     // Try alternate bazaar IDs for L.A.S.R's Eye
