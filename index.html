@@ -89,7 +89,7 @@ function App(){
   const[ahFlipId,setAhFlipId]=useState(null);
   const[defaultTax,setDefaultTax]=useState("auction");
   const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);const[bzTimestamp,setBzTimestamp]=useState(0);
-  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[infernoCollAmt,setInfernoCollAmt]=useState("");const[infernoCollDate,setInfernoCollDate]=useState(today());const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
+  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[infernoCollAmt,setInfernoCollAmt]=useState("");const[infernoCollDate,setInfernoCollDate]=useState(today());const[infernoResetCountdown,setInfernoResetCountdown]=useState(0);const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
   const[craftRelistId,setCraftRelistId]=useState(null);const[craftSellTax,setCraftSellTax]=useState("auction");const[editModCraft,setEditModCraft]=useState(null);const[editModKey,setEditModKey]=useState(null);const[editModVal,setEditModVal]=useState("");const[craftRelistAmt,setCraftRelistAmt]=useState("");const[invItem,setInvItem]=useState("");const[invQty,setInvQty]=useState("");const[invPrice,setInvPrice]=useState("");const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
   const MODS=[
     {key:"shadowWarp",label:"Shadow Warp Scroll",bzIds:["SHADOW_WARP_SCROLL"],qtys:[1],default:true},
@@ -256,14 +256,16 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const getTermEstimate=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;const settings=data.craftSettings||{};TERM_MODS.forEach(m=>{const mod=(c.modifiers||{})[m.key];if(mod&&mod.enabled){if(mod.filled){total+=(mod.filledPrice||0)/1000000}else{let cost=getModCost(m,bzPrices,settings);total+=cost/1000000}}});return total};
   const getTermProfit=(c)=>{if(!c.sellPrice)return null;const cost=getTermActualCost(c);const rate=c.sellTax==="none"?0:c.sellTax==="listed"?0.025:0.035;return c.sellPrice-cost-c.sellPrice*rate};
   const FUEL_RECIPE=[
-    {id:"CRUDE_GABAGOOL",label:"Crude Gabagool",per:6912},
+    {id:"VERY_CRUDE_GABAGOOL",label:"Very Crude Gabagool",per:684},
     {id:"ENCHANTED_COAL",label:"Enchanted Coal",per:1204},
     {id:"ENCHANTED_SULPHUR",label:"Enchanted Sulphur",per:75.25},
-    {id:"GABAGOOL_DISTILLATE",label:"Gabagool Distillate",per:6},
+    {id:"CRUDE_GABAGOOL_DISTILLATE",label:"Gabagool Distillate",per:6},
     {id:"INFERNO_FUEL_BLOCK",label:"Inferno Fuel Block",per:2}
   ];
   const getFuelCost=(qty,prices)=>{if(!prices||!qty)return 0;return FUEL_RECIPE.reduce((t,r)=>{const p=prices[r.id];return t+(p?(p.buyOrder||0)*r.per*qty:0)},0)};
-  const craftFuels=async(qty,customPrice)=>{const q=parseInt(qty)||0;if(!q)return;let cost;if(customPrice){cost=parseFloat(customPrice)*1000000}else{const prices=await fetchBazaar();if(!prices)return;cost=getFuelCost(q,prices)}const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,fuelCount:inf.fuelCount+q,fuelCost:inf.fuelCost+cost/1000000,lastCraft:{qty:q,cost:cost/1000000},pendingQty:0}})};
+  const craftFuels=async(qty)=>{const q=parseInt(qty)||0;if(!q)return;const prices=await fetchBazaar();if(!prices)return;const cost=getFuelCost(q,prices);const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,fuelCount:inf.fuelCount+q,fuelCost:inf.fuelCost+cost/1000000,lastCraft:{qty:q,cost:cost/1000000},pendingQty:0}})};
+  const startInfernoReset=()=>{setInfernoResetCountdown(5);const iv=setInterval(()=>{setInfernoResetCountdown(prev=>{if(prev<=1){clearInterval(iv);return-1}return prev-1})},1000)};
+  const confirmInfernoReset=()=>{save({...data,inferno:{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]}});setInfernoResetCountdown(0)};
   const undoLastCraft=()=>{const inf=data.inferno||{};if(!inf.lastCraft)return;save({...data,inferno:{...inf,fuelCount:inf.fuelCount-inf.lastCraft.qty,fuelCost:inf.fuelCost-inf.lastCraft.cost,lastCraft:null}});};
   const setMinionCount=(n)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,minionCount:parseInt(n)||0}})};
   const setPendingQty=(n)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,pendingQty:parseInt(n)||0}})};
@@ -908,10 +910,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"12px",flexWrap:"wrap"}}>
             <div><label style={S.lbl}>How many fuels?</label>
               <input style={{...S.inp,width:"120px"}} type="number" value={pq||""} onChange={e=>setPendingQty(e.target.value)} placeholder="e.g. 24" /></div>
-            <button onClick={()=>craftFuels(pq)} style={S.bMain}>Done (Bazaar Price)</button>
-            <button onClick={()=>{const val=document.getElementById("inferno-custom-price")?.value;if(val)craftFuels(pq,val)}} style={S.bg}>Done (Custom Price)</button>
-            <div><label style={S.lbl}>Custom Total (millions)</label>
-              <input id="inferno-custom-price" style={{...S.inp,width:"120px"}} type="number" placeholder="e.g. 100" /></div>
+            <button onClick={()=>craftFuels(pq)} style={S.bMain}>Done</button>
             <button onClick={()=>fetchBazaar(true)} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"...":"↻ Bazaar"}</button></div>
           {pq>0&&<div style={{background:T.input,borderRadius:"6px",padding:"10px"}}>
             <div style={{fontSize:"10px",fontWeight:700,color:T.textMuted,marginBottom:"6px"}}>SHOPPING LIST ({pq} fuels)</div>
@@ -1084,6 +1083,12 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           {!bzPrices&&<button onClick={fetchBazaar} style={{...S.bg,marginTop:"8px",fontSize:"10px"}}>{bzLoading?"Loading...":"Load Bazaar Prices"}</button>}
         </div>
         <div style={S.card}>
+          <div style={S.cT}>Inferno Minions</div>
+          {infernoResetCountdown===0&&<button onClick={startInfernoReset} style={{padding:"6px 12px",border:"1px solid #f8717140",borderRadius:"4px",background:"transparent",color:"#f87171",fontFamily:"inherit",fontSize:"11px",cursor:"pointer"}}>Reset All Inferno Data</button>}
+          {infernoResetCountdown>0&&<div style={{fontSize:"12px",color:"#f87171"}}>Are you sure? This deletes all fuel and collection data. Confirm in {infernoResetCountdown}s...</div>}
+          {infernoResetCountdown===-1&&<div style={{display:"flex",gap:"8px",alignItems:"center"}}><button onClick={confirmInfernoReset} style={{padding:"6px 12px",border:"none",borderRadius:"4px",background:"#f87171",color:"#fff",fontFamily:"inherit",fontSize:"11px",cursor:"pointer",fontWeight:700}}>Confirm Delete</button><button onClick={()=>setInfernoResetCountdown(0)} style={{...S.bm,fontSize:"11px"}}>Cancel</button></div>}
+        </div>
+        <div style={S.card}>
           <div style={S.cT}>Theme</div>
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
             {[["dark","Dark"],["light","Light"],["pastel","Pastel"]].map(([k,label])=>
@@ -1147,3 +1152,4 @@ document.getElementById('loading').style.display='none';
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 }catch(e){document.getElementById('loading').style.display='none';document.getElementById('error').style.display='block';document.getElementById('error-msg').textContent=e.message;console.error(e)}
 </script></body></html>
+
