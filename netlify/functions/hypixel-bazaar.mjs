@@ -85,7 +85,14 @@ export default async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ prices, timestamp: Date.now() }), { status: 200, headers });
+    // Find correct IDs for items showing 0
+    const search = {};
+    for (const key of Object.keys(data.products)) {
+      if (key.includes("GABAGOOL") || key.includes("INFERNO") || key.includes("DISTILL") || key.includes("SULPHUR") || key.includes("FUEL")) {
+        search[key] = getPrice(key);
+      }
+    }
+    return new Response(JSON.stringify({ prices, search, timestamp: Date.now() }), { status: 200, headers });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
