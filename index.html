@@ -89,7 +89,7 @@ function App(){
   const[ahFlipId,setAhFlipId]=useState(null);
   const[defaultTax,setDefaultTax]=useState("auction");
   const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);const[bzTimestamp,setBzTimestamp]=useState(0);
-  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[infernoQty,setInfernoQty]=useState("");const[infernoCollAmt,setInfernoCollAmt]=useState("");const[infernoCollDate,setInfernoCollDate]=useState(today());const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
+  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[infernoCollAmt,setInfernoCollAmt]=useState("");const[infernoCollDate,setInfernoCollDate]=useState(today());const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
   const[craftRelistId,setCraftRelistId]=useState(null);const[craftSellTax,setCraftSellTax]=useState("auction");const[editModCraft,setEditModCraft]=useState(null);const[editModKey,setEditModKey]=useState(null);const[editModVal,setEditModVal]=useState("");const[craftRelistAmt,setCraftRelistAmt]=useState("");const[invItem,setInvItem]=useState("");const[invQty,setInvQty]=useState("");const[invPrice,setInvPrice]=useState("");const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
   const MODS=[
     {key:"shadowWarp",label:"Shadow Warp Scroll",bzIds:["SHADOW_WARP_SCROLL"],qtys:[1],default:true},
@@ -263,10 +263,13 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
     {id:"INFERNO_FUEL_BLOCK",label:"Inferno Fuel Block",per:2}
   ];
   const getFuelCost=(qty,prices)=>{if(!prices||!qty)return 0;return FUEL_RECIPE.reduce((t,r)=>{const p=prices[r.id];return t+(p?(p.buyOrder||0)*r.per*qty:0)},0)};
-  const craftFuels=async(qty)=>{const q=parseInt(qty)||0;if(!q)return;const prices=await fetchBazaar();if(!prices)return;const cost=getFuelCost(q,prices);const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,fuelCount:inf.fuelCount+q,fuelCost:inf.fuelCost+cost/1000000}});setInfernoQty("")};
+  const craftFuels=async(qty,customPrice)=>{const q=parseInt(qty)||0;if(!q)return;let cost;if(customPrice){cost=parseFloat(customPrice)*1000000}else{const prices=await fetchBazaar();if(!prices)return;cost=getFuelCost(q,prices)}const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,fuelCount:inf.fuelCount+q,fuelCost:inf.fuelCost+cost/1000000,lastCraft:{qty:q,cost:cost/1000000},pendingQty:0}})};
+  const undoLastCraft=()=>{const inf=data.inferno||{};if(!inf.lastCraft)return;save({...data,inferno:{...inf,fuelCount:inf.fuelCount-inf.lastCraft.qty,fuelCost:inf.fuelCost-inf.lastCraft.cost,lastCraft:null}});};
+  const setMinionCount=(n)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,minionCount:parseInt(n)||0}})};
+  const setPendingQty=(n)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};save({...data,inferno:{...inf,pendingQty:parseInt(n)||0}})};
   const addCollection=(amt,date)=>{const a=parseFloat(amt)||0;if(!a)return;const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,collections:[...inf.collections,{id:gid(),amount:a,date:date||today()}]}});setInfernoCollAmt("")};
   const deleteCollection=(colId)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,collections:inf.collections.filter(c=>c.id!==colId)}})};
-  const getWeeklyRate=(collections,weeksAgo)=>{const now=new Date();const d=new Date(now);d.setDate(d.getDate()-d.getDay()+1-weeksAgo*7);const weekStart=d.toISOString().slice(0,10);const e=new Date(d);e.setDate(e.getDate()+7);const weekEnd=e.toISOString().slice(0,10);const total=collections.filter(c=>c.date>=weekStart&&c.date<weekEnd).reduce((s,c)=>s+c.amount,0);return total/7};
+  const getWeeklyRate=(collections,weeksAgo)=>{const now=new Date();const dow=now.getDay()||7;const mon=new Date(now);mon.setDate(mon.getDate()-dow+1-weeksAgo*7);const weekStart=mon.toISOString().slice(0,10);const sun=new Date(mon);sun.setDate(sun.getDate()+7);const weekEnd=sun.toISOString().slice(0,10);const total=collections.filter(c=>c.date>=weekStart&&c.date<weekEnd).reduce((s,c)=>s+c.amount,0);return total/7};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhAuctions(prev=>prev.filter(a=>a.auctionId!==auctionId));setAhOpen(false);setAhFlipId(null)};
@@ -443,7 +446,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["crafts","Hyperion Crafts"],["terminator","Terminator"],["inferno","Inferno Minions"],["auctions","Auctions"],["investments","Investments"],["calculator","Calculator"]].map(([k,v])=>
+      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["crafts","Hyperion Crafts"],["terminator","Terminator"],["auctions","Auctions"],["inferno","Inferno Minions"],["investments","Investments"],["calculator","Calculator"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
       <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"20px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
@@ -877,37 +880,58 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
 
       {/* ── INFERNO ── */}
       {tab==="inferno"&&<>
-        {(()=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};const totalColl=inf.collections.reduce((s,c)=>s+c.amount,0);const netProfit=totalColl-inf.fuelCost;const thisWeek=getWeeklyRate(inf.collections,0);const lastWeek=getWeeklyRate(inf.collections,1);
+        {(()=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};const totalColl=inf.collections.reduce((s,c)=>s+c.amount,0);const netProfit=totalColl-inf.fuelCost;const thisWeek=getWeeklyRate(inf.collections,0);const lastWeek=getWeeklyRate(inf.collections,1);const avgFuel=inf.fuelCount>0?inf.fuelCost/inf.fuelCount:0;const dailyCost=inf.minionCount*avgFuel;const pq=inf.pendingQty||0;
         return<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"12px"}}>
           <Stat v={inf.fuelCount} l="Fuels Crafted" c={T.text} />
           <Stat v={fm(inf.fuelCost)} l="Fuel Cost" c="#f87171" />
           <Stat v={fm(netProfit)} l="Net Profit" c={netProfit>=0?"#4ade80":"#f87171"} />
-          <Stat v={inf.fuelCount>0?fm(inf.fuelCost/inf.fuelCount):"—"} l="Avg Fuel Cost" c="#a78bfa" />
+          <Stat v={fm(avgFuel)} l="Avg Fuel Cost" c="#a78bfa" />
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"12px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"12px"}}>
           <Stat v={fm(thisWeek)+"/day"} l="This Week" c="#fcd34d" />
           <Stat v={fm(lastWeek)+"/day"} l="Last Week" c={T.textDim} />
+          <Stat v={inf.minionCount>0?fm(thisWeek-dailyCost)+"/day":"—"} l="Est. Daily Profit" c={thisWeek-dailyCost>=0?"#4ade80":"#f87171"} />
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cT}>Minion Setup</div>
+          <div style={{display:"flex",gap:"8px",alignItems:"end"}}>
+            <div><label style={S.lbl}>Active Minions</label>
+              <input style={{...S.inp,width:"80px"}} type="number" value={inf.minionCount||""} onChange={e=>setMinionCount(e.target.value)} placeholder="0" /></div>
+            {inf.minionCount>0&&avgFuel>0&&<span style={{fontSize:"10px",color:T.textDim}}>Daily fuel cost: {fm(dailyCost)} ({inf.minionCount} × {fm(avgFuel)})</span>}
+          </div>
         </div>
 
         <div style={S.card}>
           <div style={S.cT}>Craft Fuels</div>
-          <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"12px"}}>
+          <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"12px",flexWrap:"wrap"}}>
             <div><label style={S.lbl}>How many fuels?</label>
-              <input style={{...S.inp,width:"120px"}} type="number" value={infernoQty} onChange={e=>setInfernoQty(e.target.value)} placeholder="e.g. 24" onKeyDown={e=>e.key==="Enter"&&craftFuels(infernoQty)} /></div>
-            <button onClick={()=>craftFuels(infernoQty)} style={S.bMain}>Done</button>
-            <button onClick={fetchBazaar} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"...":"↻ Bazaar"}</button></div>
-          {infernoQty&&parseInt(infernoQty)>0&&<div style={{background:T.input,borderRadius:"6px",padding:"10px"}}>
-            <div style={{fontSize:"10px",fontWeight:700,color:T.textMuted,marginBottom:"6px"}}>SHOPPING LIST</div>
-            {FUEL_RECIPE.map(r=>{const qty=r.per*parseInt(infernoQty);const price=bzPrices&&bzPrices[r.id]?(bzPrices[r.id].buyOrder||0)*qty:0;
+              <input style={{...S.inp,width:"120px"}} type="number" value={pq||""} onChange={e=>setPendingQty(e.target.value)} placeholder="e.g. 24" /></div>
+            <button onClick={()=>craftFuels(pq)} style={S.bMain}>Done (Bazaar Price)</button>
+            <button onClick={()=>{const val=document.getElementById("inferno-custom-price")?.value;if(val)craftFuels(pq,val)}} style={S.bg}>Done (Custom Price)</button>
+            <div><label style={S.lbl}>Custom Total (millions)</label>
+              <input id="inferno-custom-price" style={{...S.inp,width:"120px"}} type="number" placeholder="e.g. 100" /></div>
+            <button onClick={()=>fetchBazaar(true)} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"...":"↻ Bazaar"}</button></div>
+          {pq>0&&<div style={{background:T.input,borderRadius:"6px",padding:"10px"}}>
+            <div style={{fontSize:"10px",fontWeight:700,color:T.textMuted,marginBottom:"6px"}}>SHOPPING LIST ({pq} fuels)</div>
+            {FUEL_RECIPE.map(r=>{const qty=r.per*pq;const price=bzPrices&&bzPrices[r.id]?(bzPrices[r.id].buyOrder||0)*qty:0;
               return<div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:"12px"}}>
                 <span style={{color:T.text}}>{Number.isInteger(qty)?qty.toLocaleString():qty.toLocaleString(undefined,{maximumFractionDigits:2})}× {r.label}</span>
-                <span style={{color:"#4ade80",fontWeight:600}}>{bzPrices?fm(price/1000000):"—"}</span>
+                <span style={{color:price>0?"#4ade80":"#f87171",fontWeight:600}}>{price>0?fm(price/1000000):"not on BZ"}</span>
               </div>})}
             <div style={{borderTop:"1px solid "+T.cardBorder,marginTop:"6px",paddingTop:"6px",display:"flex",justifyContent:"space-between",fontWeight:700,fontSize:"13px"}}>
               <span style={{color:T.text}}>Total</span>
-              <span style={{color:"#fcd34d"}}>{bzPrices?fm(getFuelCost(parseInt(infernoQty),bzPrices)/1000000):"—"}</span></div>
+              <span style={{color:"#fcd34d"}}>{bzPrices?fm(getFuelCost(pq,bzPrices)/1000000):"—"}</span></div>
           </div>}
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cT}>Fuel History</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{color:T.textDim,fontSize:"12px"}}>{inf.fuelCount>0?inf.fuelCount+" fuels crafted for "+fm(inf.fuelCost)+" total ("+fm(avgFuel)+" avg)":"No fuels crafted yet"}</span>
+            {inf.lastCraft&&<button onClick={undoLastCraft} style={{...S.bs,color:"#f87171",fontSize:"10px"}}>↩ Undo Last ({inf.lastCraft.qty} fuels)</button>}
+          </div>
         </div>
 
         <div style={S.card}>
@@ -926,14 +950,6 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
                 <span style={{fontWeight:700,color:"#4ade80",fontSize:"13px"}}>{fm(c.amount)}</span>
                 <button onClick={()=>deleteCollection(c.id)} style={{...S.bs,color:"#f8717140",fontSize:"9px"}}>×</button></div>
             </div>)}
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cT}>Fuel History</div>
-          <div style={{color:T.textDim,fontSize:"12px",padding:"4px 0"}}>
-            {inf.fuelCount>0?<span>{inf.fuelCount} fuels crafted for {fm(inf.fuelCost)} total ({fm(inf.fuelCost/inf.fuelCount)} avg)</span>
-            :<span>No fuels crafted yet</span>}
-          </div>
         </div>
         </>})()}
       </>}
