@@ -89,7 +89,7 @@ function App(){
   const[ahFlipId,setAhFlipId]=useState(null);
   const[defaultTax,setDefaultTax]=useState("auction");
   const[bzPrices,setBzPrices]=useState(null);const[bzLoading,setBzLoading]=useState(false);const[bzTimestamp,setBzTimestamp]=useState(0);
-  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
+  const[craftBuilding,setCraftBuilding]=useState(null);const[termBuilding,setTermBuilding]=useState(null);const[expandedTermId,setExpandedTermId]=useState(null);const[infernoQty,setInfernoQty]=useState("");const[infernoCollAmt,setInfernoCollAmt]=useState("");const[infernoCollDate,setInfernoCollDate]=useState(today());const[expandedCraftId,setExpandedCraftId]=useState(null);const[showInventory,setShowInventory]=useState(false);
   const[craftRelistId,setCraftRelistId]=useState(null);const[craftSellTax,setCraftSellTax]=useState("auction");const[editModCraft,setEditModCraft]=useState(null);const[editModKey,setEditModKey]=useState(null);const[editModVal,setEditModVal]=useState("");const[craftRelistAmt,setCraftRelistAmt]=useState("");const[invItem,setInvItem]=useState("");const[invQty,setInvQty]=useState("");const[invPrice,setInvPrice]=useState("");const[craftEditMod,setCraftEditMod]=useState(null);const[craftEditVal,setCraftEditVal]=useState("");
   const MODS=[
     {key:"shadowWarp",label:"Shadow Warp Scroll",bzIds:["SHADOW_WARP_SCROLL"],qtys:[1],default:true},
@@ -97,16 +97,16 @@ function App(){
     {key:"implosion",label:"Implosion Scroll",bzIds:["IMPLOSION_SCROLL"],qtys:[1],default:true},
     {key:"catalysts",label:"24× Wither Catalyst",bzIds:["WITHER_CATALYST"],qtys:[24],default:true},
     {key:"laserEyes",label:"8× L.A.S.R's Eye",bzIds:["LASR_EYE"],qtys:[8],default:true},
-    {key:"recomb",label:"Recombobulator",bzIds:["RECOMBOBULATOR_3000"],qtys:[1],default:false},
-    {key:"uw5",label:"Ultimate Wise 5",bzIds:["ENCHANTMENT_ULTIMATE_WISE_5"],qtys:[1],default:false},
+    {key:"recomb",label:"Recombobulator",bzIds:["RECOMBOBULATOR_3000"],qtys:[1],default:true},
+    {key:"uw5",label:"Ultimate Wise 5",bzIds:["ENCHANTMENT_ULTIMATE_WISE_5"],qtys:[1],default:true},
     {key:"sapphireSlot",label:"Sapphire Slot",desc:"250k + 4× Flawless Sapphire",bzIds:["FLAWLESS_SAPPHIRE_GEM"],qtys:[4],coinCost:250000,default:false},
     {key:"combatSlot",label:"Combat Slot",desc:"250k + 1ea Flawless Jasper/Sapphire/Ruby/Amethyst",bzIds:["FLAWLESS_JASPER_GEM","FLAWLESS_SAPPHIRE_GEM","FLAWLESS_RUBY_GEM","FLAWLESS_AMETHYST_GEM"],qtys:[1,1,1,1],coinCost:250000,default:false},
     {key:"gemsFlawless",label:"Gems: 2× Flawless Sapphire",bzIds:["FLAWLESS_SAPPHIRE_GEM"],qtys:[2],default:false,group:"gems"},
     {key:"gemsPerfect",label:"Gems: 2× Perfect Sapphire",bzIds:["PERFECT_SAPPHIRE_GEM"],qtys:[2],default:false,group:"gems"},
-    {key:"hpb",label:"10× Hot Potato Book",bzIds:["HOT_POTATO_BOOK"],qtys:[10],default:false},
-    {key:"titanics",label:"Titanic XP Bottles",bzIds:["TITANIC_EXP_BOTTLE"],qtys:[1],hasQty:true,defaultQty:5,default:false},
-    {key:"t6enchants",label:"Basic T6 Enchants",bzIds:[],qtys:[],flatCost:2500000,default:false},
-    {key:"fiveStars",label:"5 Stars",desc:"3,350 Wither Essence + 35k coins",bzIds:["ESSENCE_WITHER"],qtys:[3350],coinCost:35000,default:false}
+    {key:"hpb",label:"10× Hot Potato Book",bzIds:["HOT_POTATO_BOOK"],qtys:[10],default:true},
+    {key:"titanics",label:"Titanic XP Bottles",bzIds:["TITANIC_EXP_BOTTLE"],qtys:[1],hasQty:true,defaultQty:5,default:true},
+    {key:"t6enchants",label:"Basic T6 Enchants",bzIds:[],qtys:[],flatCost:2500000,default:true},
+    {key:"fiveStars",label:"5 Stars",desc:"3,350 Wither Essence + 35k coins",bzIds:["ESSENCE_WITHER"],qtys:[3350],coinCost:35000,default:true}
   ];
   
 const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
@@ -255,6 +255,18 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const getTermActualCost=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;TERM_MODS.forEach(m=>{const mod=(c.modifiers||{})[m.key];if(mod&&mod.enabled&&mod.filled){total+=(mod.filledPrice||0)/1000000}});(c.relists||[]).forEach(r=>{total+=r.fee});return total};
   const getTermEstimate=(c)=>{let total=parseFloat(c.handlePrice)||0;total+=parseFloat(c.extraCost)||0;const settings=data.craftSettings||{};TERM_MODS.forEach(m=>{const mod=(c.modifiers||{})[m.key];if(mod&&mod.enabled){if(mod.filled){total+=(mod.filledPrice||0)/1000000}else{let cost=getModCost(m,bzPrices,settings);total+=cost/1000000}}});return total};
   const getTermProfit=(c)=>{if(!c.sellPrice)return null;const cost=getTermActualCost(c);const rate=c.sellTax==="none"?0:c.sellTax==="listed"?0.025:0.035;return c.sellPrice-cost-c.sellPrice*rate};
+  const FUEL_RECIPE=[
+    {id:"CRUDE_GABAGOOL",label:"Crude Gabagool",per:6912},
+    {id:"ENCHANTED_COAL",label:"Enchanted Coal",per:1204},
+    {id:"ENCHANTED_SULPHUR",label:"Enchanted Sulphur",per:75.25},
+    {id:"GABAGOOL_DISTILLATE",label:"Gabagool Distillate",per:6},
+    {id:"INFERNO_FUEL_BLOCK",label:"Inferno Fuel Block",per:2}
+  ];
+  const getFuelCost=(qty,prices)=>{if(!prices||!qty)return 0;return FUEL_RECIPE.reduce((t,r)=>{const p=prices[r.id];return t+(p?(p.buyOrder||0)*r.per*qty:0)},0)};
+  const craftFuels=async(qty)=>{const q=parseInt(qty)||0;if(!q)return;const prices=await fetchBazaar();if(!prices)return;const cost=getFuelCost(q,prices);const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,fuelCount:inf.fuelCount+q,fuelCost:inf.fuelCost+cost/1000000}});setInfernoQty("")};
+  const addCollection=(amt,date)=>{const a=parseFloat(amt)||0;if(!a)return;const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,collections:[...inf.collections,{id:gid(),amount:a,date:date||today()}]}});setInfernoCollAmt("")};
+  const deleteCollection=(colId)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,collections:inf.collections.filter(c=>c.id!==colId)}})};
+  const getWeeklyRate=(collections,weeksAgo)=>{const now=new Date();const d=new Date(now);d.setDate(d.getDate()-d.getDay()+1-weeksAgo*7);const weekStart=d.toISOString().slice(0,10);const e=new Date(d);e.setDate(e.getDate()+7);const weekEnd=e.toISOString().slice(0,10);const total=collections.filter(c=>c.date>=weekStart&&c.date<weekEnd).reduce((s,c)=>s+c.amount,0);return total/7};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhAuctions(prev=>prev.filter(a=>a.auctionId!==auctionId));setAhOpen(false);setAhFlipId(null)};
@@ -431,7 +443,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
 
     <nav style={{display:"flex",borderBottom:"1px solid "+T.cardBorder,background:T.nav,overflowX:"auto",alignItems:"center"}}>
       <div style={{display:"flex",flex:1,overflowX:"auto"}}>
-      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["crafts","Hyperion Crafts"],["terminator","Terminator"],["auctions","Auctions"],["investments","Investments"],["calculator","Calculator"]].map(([k,v])=>
+      {[["home","Home"],["active","Incomplete ("+active.length+")"],["completed","Completed ("+completed.length+")"],["crafts","Hyperion Crafts"],["terminator","Terminator"],["inferno","Inferno Minions"],["auctions","Auctions"],["investments","Investments"],["calculator","Calculator"]].map(([k,v])=>
         <button key={k} onClick={()=>setTab(k)} style={{padding:"9px 14px",cursor:"pointer",border:"none",fontFamily:"inherit",fontSize:"11px",background:tab===k?T.card:"transparent",color:tab===k?T.accent:T.textDim,fontWeight:tab===k?700:400,borderBottom:tab===k?"2px solid "+T.accent:"2px solid transparent",whiteSpace:"nowrap"}}>{v}</button>)}</div>
       <button onClick={()=>setTab(tab==="settings"?"home":"settings")} style={{padding:"8px 12px",cursor:"pointer",border:"none",background:tab==="settings"?T.card:"transparent",color:tab==="settings"?T.accent:T.textDim,fontSize:"20px",borderBottom:tab==="settings"?"2px solid "+T.accent:"2px solid transparent"}} title="Settings">⚙</button>
     </nav>
@@ -641,7 +653,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             <input style={{...S.inp,maxWidth:"300px"}} value={craftBuilding.name||""} onChange={e=>setCraftBuilding({...craftBuilding,name:e.target.value})} placeholder="e.g. Hyperion #1" /></div>
           <div style={{marginBottom:"12px"}}><label style={S.lbl}>Handle Buy Price (millions)</label>
             <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
-              <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 410" autoFocus />
+              <input style={{...S.inp,maxWidth:"200px"}} type="number" value={craftBuilding.handlePrice} onChange={e=>setCraftBuilding({...craftBuilding,handlePrice:e.target.value})} placeholder="e.g. 410" autoFocus onKeyDown={e=>e.key==="Enter"&&saveCraftNew()} />
               {(data.craftInventory||{}).handle?.qty>0&&<button onClick={()=>{const stock=(data.craftInventory||{}).handle;setCraftBuilding({...craftBuilding,handlePrice:String(stock.perUnit)});const inv={...(data.craftInventory||{})};inv.handle={...stock,qty:stock.qty-1,totalSpent:stock.totalSpent-stock.perUnit};save({...data,craftInventory:inv})}} style={{padding:"4px 10px",border:"1px solid #fb923c40",borderRadius:"4px",background:"transparent",color:"#fb923c",fontFamily:"inherit",fontSize:"10px",cursor:"pointer"}}>Stock ({(data.craftInventory||{}).handle.qty})</button>}
             </div></div>
           <div style={{fontSize:"10px",color:T.textDim,marginBottom:"8px"}}>Select modifiers. Prices shown are estimates only and won't be added until you mark them as bought.</div>
@@ -862,6 +874,70 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
         </div>
       </>}
 
+
+      {/* ── INFERNO ── */}
+      {tab==="inferno"&&<>
+        {(()=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};const totalColl=inf.collections.reduce((s,c)=>s+c.amount,0);const netProfit=totalColl-inf.fuelCost;const thisWeek=getWeeklyRate(inf.collections,0);const lastWeek=getWeeklyRate(inf.collections,1);
+        return<>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"12px"}}>
+          <Stat v={inf.fuelCount} l="Fuels Crafted" c={T.text} />
+          <Stat v={fm(inf.fuelCost)} l="Fuel Cost" c="#f87171" />
+          <Stat v={fm(netProfit)} l="Net Profit" c={netProfit>=0?"#4ade80":"#f87171"} />
+          <Stat v={inf.fuelCount>0?fm(inf.fuelCost/inf.fuelCount):"—"} l="Avg Fuel Cost" c="#a78bfa" />
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"12px"}}>
+          <Stat v={fm(thisWeek)+"/day"} l="This Week" c="#fcd34d" />
+          <Stat v={fm(lastWeek)+"/day"} l="Last Week" c={T.textDim} />
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cT}>Craft Fuels</div>
+          <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"12px"}}>
+            <div><label style={S.lbl}>How many fuels?</label>
+              <input style={{...S.inp,width:"120px"}} type="number" value={infernoQty} onChange={e=>setInfernoQty(e.target.value)} placeholder="e.g. 24" onKeyDown={e=>e.key==="Enter"&&craftFuels(infernoQty)} /></div>
+            <button onClick={()=>craftFuels(infernoQty)} style={S.bMain}>Done</button>
+            <button onClick={fetchBazaar} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"...":"↻ Bazaar"}</button></div>
+          {infernoQty&&parseInt(infernoQty)>0&&<div style={{background:T.input,borderRadius:"6px",padding:"10px"}}>
+            <div style={{fontSize:"10px",fontWeight:700,color:T.textMuted,marginBottom:"6px"}}>SHOPPING LIST</div>
+            {FUEL_RECIPE.map(r=>{const qty=r.per*parseInt(infernoQty);const price=bzPrices&&bzPrices[r.id]?(bzPrices[r.id].buyOrder||0)*qty:0;
+              return<div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:"12px"}}>
+                <span style={{color:T.text}}>{Number.isInteger(qty)?qty.toLocaleString():qty.toLocaleString(undefined,{maximumFractionDigits:2})}× {r.label}</span>
+                <span style={{color:"#4ade80",fontWeight:600}}>{bzPrices?fm(price/1000000):"—"}</span>
+              </div>})}
+            <div style={{borderTop:"1px solid "+T.cardBorder,marginTop:"6px",paddingTop:"6px",display:"flex",justifyContent:"space-between",fontWeight:700,fontSize:"13px"}}>
+              <span style={{color:T.text}}>Total</span>
+              <span style={{color:"#fcd34d"}}>{bzPrices?fm(getFuelCost(parseInt(infernoQty),bzPrices)/1000000):"—"}</span></div>
+          </div>}
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cT}>Collections</div>
+          <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"12px"}}>
+            <div><label style={S.lbl}>Amount (millions)</label>
+              <input style={{...S.inp,width:"150px"}} type="number" value={infernoCollAmt} onChange={e=>setInfernoCollAmt(e.target.value)} placeholder="e.g. 50" onKeyDown={e=>e.key==="Enter"&&addCollection(infernoCollAmt,infernoCollDate)} /></div>
+            <div><label style={S.lbl}>Date</label>
+              <input style={{...S.inp,width:"130px"}} type="date" value={infernoCollDate} onChange={e=>setInfernoCollDate(e.target.value)} /></div>
+            <button onClick={()=>addCollection(infernoCollAmt,infernoCollDate)} style={S.bMain}>Add</button></div>
+          {inf.collections.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No collections yet</div>}
+          {[...inf.collections].sort((a,b)=>b.date.localeCompare(a.date)).map(c=>
+            <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+T.cardBorder+"40"}}>
+              <span style={{fontSize:"12px",color:T.text}}>{fdateF(c.date)}</span>
+              <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                <span style={{fontWeight:700,color:"#4ade80",fontSize:"13px"}}>{fm(c.amount)}</span>
+                <button onClick={()=>deleteCollection(c.id)} style={{...S.bs,color:"#f8717140",fontSize:"9px"}}>×</button></div>
+            </div>)}
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cT}>Fuel History</div>
+          <div style={{color:T.textDim,fontSize:"12px",padding:"4px 0"}}>
+            {inf.fuelCount>0?<span>{inf.fuelCount} fuels crafted for {fm(inf.fuelCost)} total ({fm(inf.fuelCost/inf.fuelCount)} avg)</span>
+            :<span>No fuels crafted yet</span>}
+          </div>
+        </div>
+        </>})()}
+      </>}
+
       {/* ── AUCTIONS ── */}
       {tab==="auctions"&&<>
         {!mcUuid&&<div style={{...S.card,textAlign:"center",padding:"30px"}}><div style={{color:T.textDim}}>Verify your Minecraft account to see your auctions</div></div>}
@@ -1032,6 +1108,8 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
         <div style={S.card}>
           <div onClick={()=>setShowChangelog(!showChangelog)} style={{...S.cT,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Changelog</span><span style={{fontSize:"10px",color:T.textDim}}>{showChangelog?"▼":"▶"}</span></div>
           {showChangelog&&<div style={{color:T.textMuted,lineHeight:"1.7",fontSize:"12px",marginTop:"8px"}}>
+            <div style={{borderLeft:"3px solid #f87171",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v4.0 — Inferno Minions & Terminator</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
+              <p>Inferno Minion profit tracker with fuel crafting calculator, live bazaar buy order pricing for all fuel materials, collection logging, rolling weekly profit per day estimates, and cumulative fuel cost tracking. Terminator crafting tab with full crafting tree — toggle Buy vs Craft at every level from raw materials to finished components, with price discrepancy display. Buy Order vs Insta-buy settings per item with exact top order bazaar pricing. Bulk inventory expanded with Necron's Handle and Judgement Core support. Independent search per tab. Investment system reworked with active/inactive sections and accurate cost tracking.</p></div>
             <div style={{borderLeft:"3px solid #fcd34d",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v3.1 — Streak Records & Relist</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
               <p>All-time best win streak displayed under current streak on the home page. Relist button added to Hyperion crafts. New modifiers: Basic T6 Enchants and 5 Stars (with Wither Essence bazaar pricing). Bulk inventory system for buying craft materials in batches.</p></div>
             <div style={{borderLeft:"3px solid #fcd34d",paddingLeft:"12px",marginBottom:"14px"}}><div style={{color:T.text,fontWeight:700,fontSize:"13px"}}>v3.0 — Hyperion Crafting</div><div style={{color:T.textDim,fontSize:"10px",marginBottom:"4px"}}>June 2026</div>
