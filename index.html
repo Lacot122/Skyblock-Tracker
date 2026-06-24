@@ -328,7 +328,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const availableMonths=useMemo(()=>{const set=new Set();dailyData.forEach(d=>{const mk=getMonthKey(d.date);if(mk)set.add(mk)});return Array.from(set).sort()},[dailyData]);
   const filteredDaily=useMemo(()=>{if(chartMonth==="all")return dailyData;return dailyData.filter(d=>getMonthKey(d.date)===chartMonth)},[dailyData,chartMonth]);
 
-  useEffect(()=>{if(tab==="auctions"&&mcUuid&&ahFullData.active.length===0&&ahFullData.sold.length===0)fetchAuctionTab();if(tab==="active"&&mcUuid&&ahAuctions.length===0){fetch("/api/hypixel-auctions?uuid="+mcUuid).then(r=>r.json()).then(d=>{setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)))}).catch(()=>{})}},[tab]);
+  useEffect(()=>{if(tab==="auctions"&&mcUuid&&ahFullData.active.length===0&&ahFullData.sold.length===0)fetchAuctionTab();if(tab==="inferno"&&!bzPrices)fetchBazaar();if(tab==="active"&&mcUuid&&ahAuctions.length===0){fetch("/api/hypixel-auctions?uuid="+mcUuid).then(r=>r.json()).then(d=>{setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)))}).catch(()=>{})}},[tab]);
   const calcTax=calcSell?parseFloat(calcSell)*data.taxRate:0,calcRcv=calcSell?parseFloat(calcSell)-calcTax:0,calcMax=calcSell?calcRcv-(parseFloat(calcTarget)||0):0;
   const filterF=(list)=>{if(!search)return list;const s=search.toLowerCase();return list.filter(f=>f.item.toLowerCase().includes(s)||(f.notes||"").toLowerCase().includes(s))};
 
@@ -909,7 +909,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
           <div style={S.cT}>Craft Fuels</div>
           <div style={{display:"flex",gap:"8px",alignItems:"end",marginBottom:"12px",flexWrap:"wrap"}}>
             <div><label style={S.lbl}>How many fuels?</label>
-              <input style={{...S.inp,width:"120px"}} type="number" value={pq||""} onChange={e=>setPendingQty(e.target.value)} placeholder="e.g. 24" /></div>
+              <input style={{...S.inp,width:"120px"}} type="number" value={pq||""} onChange={e=>{setPendingQty(e.target.value);if(!bzPrices)fetchBazaar()}} placeholder="e.g. 24" /></div>
             <button onClick={()=>craftFuels(pq)} style={S.bMain}>Done</button>
             <button onClick={()=>fetchBazaar(true)} style={{...S.bs,color:"#60a5fa",fontSize:"11px"}}>{bzLoading?"...":"↻ Bazaar"}</button></div>
           {pq>0&&<div style={{background:T.input,borderRadius:"6px",padding:"10px"}}>
@@ -1152,4 +1152,3 @@ document.getElementById('loading').style.display='none';
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 }catch(e){document.getElementById('loading').style.display='none';document.getElementById('error').style.display='block';document.getElementById('error-msg').textContent=e.message;console.error(e)}
 </script></body></html>
-
