@@ -884,12 +884,11 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
       {tab==="inferno"&&<>
         {(()=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,lastCraft:null,pendingQty:0,minionCount:0,collections:[]};const totalColl=inf.collections.reduce((s,c)=>s+c.amount,0);const netProfit=totalColl-inf.fuelCost;const avgFuel=inf.fuelCount>0?inf.fuelCost/inf.fuelCount:0;const dailyCost=inf.minionCount*avgFuel;const pq=inf.pendingQty||0;
         return<>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"12px"}}>
-          <Stat v={fm(inf.fuelCost)} l="Fuel Cost" c="#f87171" />
-          <Stat v={fm(netProfit)} l="Net Profit" c={netProfit>=0?"#4ade80":"#f87171"} />
+        <div style={{display:"grid",gridTemplateColumns:"repeat(1,1fr)",gap:"8px",marginBottom:"12px"}}>
+          <Stat v={fm(inf.fuelCost)} l="Total Fuel Cost" c="#f87171" />
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"8px",marginBottom:"12px"}}>
-          {(()=>{const colls=inf.collections;if(colls.length===0)return<><Stat v="—" l="Actual Profit" c={T.textDim} /><Stat v="—" l="Net Profit" c={T.textDim} /></>;const sorted=[...colls].sort((a,b)=>a.date.localeCompare(b.date));const firstDate=new Date(sorted[0].date+"T12:00:00");const now=new Date();const daysRunning=Math.max(1,Math.round((now-firstDate)/86400000));const fuelUsedCost=daysRunning*inf.minionCount*avgFuel;const actualProfit=totalColl-fuelUsedCost;return<><Stat v={fm(actualProfit)} l={"Actual Profit ("+daysRunning+"d)"} c={actualProfit>=0?"#4ade80":"#f87171"} /><Stat v={fm(netProfit)} l="Net (All Fuel)" c={netProfit>=0?"#4ade80":"#f87171"} /></>})()}
+          {(()=>{const colls=inf.collections;if(colls.length===0)return<><Stat v="—" l="Actual Profit" c={T.textDim} /><Stat v="—" l="Net Profit" c={T.textDim} /></>;const sorted=[...colls].sort((a,b)=>a.date.localeCompare(b.date));const firstDate=new Date(sorted[0].date+"T12:00:00");const now=new Date();const daysRunning=Math.max(1,Math.round((now-firstDate)/86400000)+1);const fuelUsedCost=daysRunning*inf.minionCount*avgFuel;const actualProfit=totalColl-fuelUsedCost;return<><Stat v={fm(actualProfit)} l={"Actual Profit ("+daysRunning+"d)"} c={actualProfit>=0?"#4ade80":"#f87171"} /><Stat v={fm(netProfit)} l="Net (All Fuel)" c={netProfit>=0?"#4ade80":"#f87171"} /></>})()}
         </div>
 
         <div style={S.card}>
