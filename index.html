@@ -465,7 +465,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             </>)}</div>
           <div className="stat-grid" style={{flex:1,gridTemplateColumns:"repeat(3,1fr)"}}>
             <Stat v={fm(stats.total)} l="Net Profit" c={stats.total>=0?"#4ade80":"#f87171"} />
-            <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
+            <Stat v={fm(completed.reduce((s,f)=>s+f.buy,0)+active.reduce((s,f)=>s+f.buy,0)+(data.crafts||[]).reduce((s,c)=>s+(parseFloat(c.handlePrice)||0),0))} l="Coins Traded" c="#e879f9" />
             {purse!==null&&<Stat v={fm(purse/1000000)} l="Purse" c="#22d3ee" />}
             <Stat v={active.length} l="Incomplete" c="#60a5fa" />{apiError&&<div style={{gridColumn:"1/-1",textAlign:"center",fontSize:"10px",color:"#f87171",padding:"4px"}}>{apiError}</div>}
             <Stat v={ahFullData.active.length} l="Active Auctions" c="#22d3ee" />
@@ -542,7 +542,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
       {tab==="investments"&&<>
         {data.investments.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"8px",marginBottom:"12px"}}>
           <Stat v={data.investments.reduce((s,i)=>s+i.totalQty,0)} l="Total Items" c="#fcd34d" />
-          <Stat v={fm(data.investments.reduce((s,i)=>{const sq=(i.sales||[]).reduce((t,x)=>t+(x.qty||1),0);const oq=i.totalQty+sq;const avg=oq>0?i.totalSpent/oq:0;return s+avg*i.totalQty},0))} l="Coins Invested" c="#e879f9" />
+          <Stat v={fm(completed.reduce((s,f)=>s+f.buy,0)+active.reduce((s,f)=>s+f.buy,0)+(data.crafts||[]).reduce((s,c)=>s+(parseFloat(c.handlePrice)||0),0))} l="Coins Traded" c="#e879f9" />
           <Stat v={fm(data.investments.reduce((s,i)=>s+getInvProfit(i),0))} l="Net Profit" c={data.investments.reduce((s,i)=>s+getInvProfit(i),0)>=0?"#4ade80":"#f87171"} />
           <Stat v={data.investments.reduce((s,i)=>s+(i.sales||[]).length,0)} l="Sales" c="#60a5fa" /></div>}
         <div style={S.card}><div style={S.cT}>Add Investment</div><div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"end"}}>
