@@ -10,7 +10,7 @@ export default async (req) => {
     if (!uuid) return new Response(JSON.stringify({ error: "Missing uuid" }), { status: 400, headers });
     if (!apiKey) return new Response(JSON.stringify({ error: "Server missing API key" }), { status: 500, headers });
 
-    const res = await fetch(`https://api.hypixel.net/v2/skyblock/auction?key=${apiKey}&player=${uuid}`);
+    const res = await fetch(`https://api.hypixel.net/v2/skyblock/auction?player=${uuid}`, {headers: {"API-Key": apiKey}});
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       return new Response(JSON.stringify({ error: "Hypixel API " + res.status + ": " + errBody.substring(0, 200) }), { status: 200, headers });
