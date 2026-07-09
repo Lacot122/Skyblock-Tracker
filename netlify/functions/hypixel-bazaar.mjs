@@ -6,7 +6,7 @@ export default async (req) => {
     const apiKey = process.env.HYPIXEL_API_KEY;
     if (!apiKey) return new Response(JSON.stringify({ error: "Server missing API key" }), { status: 500, headers });
 
-    const res = await fetch(`https://api.hypixel.net/v2/skyblock/bazaar?key=${apiKey}`);
+    const res = await fetch(`https://api.hypixel.net/v2/skyblock/bazaar`, {headers: {"API-Key": apiKey}});
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       return new Response(JSON.stringify({ error: "Hypixel API " + res.status + ": " + errBody.substring(0, 200) }), { status: 200, headers });
