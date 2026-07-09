@@ -19,7 +19,7 @@ export default async (req) => {
     const correctName = mojangData.name;
 
     // Get Hypixel profile to check Discord link
-    const hypixelRes = await fetch(`https://api.hypixel.net/v2/player?key=${apiKey}&uuid=${uuid}`);
+    const hypixelRes = await fetch(`https://api.hypixel.net/v2/player?uuid=${uuid}`, {headers: {"API-Key": apiKey}});
     if (!hypixelRes.ok) return new Response(JSON.stringify({ verified: false, error: "Hypixel API error" }), { status: 200, headers });
     const hypixelData = await hypixelRes.json();
 
