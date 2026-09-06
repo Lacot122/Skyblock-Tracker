@@ -278,7 +278,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
   const removeCoopMember=(uuid)=>{save({...data,coopMembers:(data.coopMembers||[]).filter(m=>m.uuid!==uuid)})};
   const getAuctionUuids=()=>{const uuids=[mcUuid];if(data.showCoopAuctions){(data.coopMembers||[]).forEach(m=>uuids.push(m.uuid))}return uuids.filter(Boolean).join(",")};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuids="+getAuctionUuids());const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
-  const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhAuctions(prev=>prev.filter(a=>a.auctionId!==auctionId));setAhOpen(false);setAhFlipId(null)};
+  const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:addSaleType}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhAuctions(prev=>prev.filter(a=>a.auctionId!==auctionId));setAhOpen(false);setAhFlipId(null)};
 
   const startReset=()=>{setResetConfirm(true);setResetCountdown(5)};
   const cancelReset=()=>{setResetConfirm(false);setResetCountdown(5)};
@@ -292,7 +292,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
   const T=themes[theme]||themes.dark;
   
   const getSellTotal=(f)=>f.sells.reduce((s,x)=>s+x.amount,0);
-  const getTaxTotal=(f)=>f.sells.reduce((s,x)=>{const rate=x.type==="bazaar"?data.bzTaxRate:x.type==="none"?0:x.type==="listed"?0.025:x.type==="under10m"?0.02:data.taxRate;const flat=x.type==="none"||x.type==="bazaar"?0:0.0552;return s+(x.amount*rate)+flat},0);
+  const getTaxTotal=(f)=>f.sells.reduce((s,x)=>{const rate=x.type==="bazaar"?data.bzTaxRate:x.type==="none"?0:x.type==="listed"?0.025:x.type==="under10m"?0.02:x.type==="under100m"?0.03:data.taxRate;const flat=x.type==="none"||x.type==="bazaar"?0:0.0552;return s+(x.amount*rate)+flat},0);
   const getProfit=(f)=>{const ts=getSellTotal(f);if(!ts)return null;return ts-f.buy-getTaxTotal(f)};
   const getDiscount=(f)=>{const ts=getSellTotal(f);if(!ts||!f.buy)return null;return((ts-f.buy)/ts*100)};
 
@@ -367,7 +367,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
   const Stat=({v,l,c})=><div style={S.stat}><div style={{fontSize:"19px",fontWeight:800,color:c}}>{v}</div><div style={S.sL}>{l}</div></div>;
 
   const tierColor=(t)=>{const m={COMMON:"#aaaaaa",UNCOMMON:"#55ff55",RARE:"#5555ff",EPIC:"#aa00aa",LEGENDARY:"#ffaa00",MYTHIC:"#ff55ff",DIVINE:"#00bfff",SPECIAL:"#ff5555",VERY_SPECIAL:"#ff5555",SUPREME:"#aa0000"};return m[t]||"#aaaaaa"};
-  const taxLabel=(t)=>t==="bazaar"?"BZ 1%":t==="none"?"No tax":t==="listed"?"Listed 2.5%":t==="under10m"?"Under 10m 2%":"AH 3.5%";
+  const taxLabel=(t)=>t==="bazaar"?"BZ 1%":t==="none"?"No tax":t==="listed"?"Listed 2.5%":t==="under100m"?"Under 100m 3%":t==="under10m"?"Under 10m 2%":"AH 3.5%";
   const taxColor=(t)=>t==="bazaar"?"#60a5fa":t==="none"?"#94a3b8":t==="listed"?"#e879f9":"#fcd34d";
 
   const renderFlip=(f,isActive)=>{
@@ -426,9 +426,9 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
       {adding&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #60a5fa30",flexWrap:"wrap"}}>
         <input style={{...S.inp,width:"100px"}} type="number" value={addSaleAmt} onChange={e=>setAddSaleAmt(e.target.value)} placeholder="Amount" autoFocus onKeyDown={e=>e.key==="Enter"&&addSale(f.id)} />
         <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
-          {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
+          {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under100m","Under 100m AH","#22d3ee","#001c1c"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
             <button key={k} onClick={()=>setAddSaleType(k)} style={{padding:"5px 8px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:addSaleType===k?bg:"#1a1a35",color:addSaleType===k?c:"#64748b",fontWeight:addSaleType===k?700:400}}>{label}</button>)}</div>
-        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%":addSaleType==="under10m"?"2%+fee":"0%"}</span>
+        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%":addSaleType==="under100m"?"3%+fee":addSaleType==="under10m"?"2%+fee":"0%"}</span>
         <button onClick={()=>addSale(f.id)} style={S.bg}>Add</button><button onClick={()=>{setAddSaleId(null);setAddSaleAmt("")}} style={S.bm}>Cancel</button></div>)}
       {/* Relist form */}
       {relistFlipId===f.id&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #e879f930",flexWrap:"wrap"}}>
@@ -582,7 +582,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
                 <span style={{fontSize:"10px",color:"#475569"}}>×</span>
                 <input style={{...S.inp,width:"100px"}} type="number" value={invSaleAmt} onChange={e=>setInvSaleAmt(e.target.value)} placeholder="Total sell price" autoFocus onKeyDown={e=>e.key==="Enter"&&addInvSale(inv.id)} />
                 <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
-                  {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
+                  {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under100m","Under 100m AH","#22d3ee","#001c1c"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
                     <button key={k} onClick={()=>setInvSaleType(k)} style={{padding:"4px 7px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:invSaleType===k?bg:"#1a1a35",color:invSaleType===k?c:"#64748b",fontWeight:invSaleType===k?700:400}}>{label}</button>)}
                 </div>
                 <button onClick={()=>addInvSale(inv.id)} style={S.bg}>Sell</button><button onClick={()=>{setInvSaleId(null);setInvSaleAmt("")}} style={S.bm}>Cancel</button>
@@ -1032,7 +1032,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
         <div style={S.card}>
           <div style={S.cT}>Default Tax Type</div>
           <div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"14px"}}>
-            {[["auction","Auction 3.5%"],["bazaar","Bazaar 1%"],["listed","Listed AH 2.5%"],["none","No Tax"],["under10m","Under 10m AH 2%"]].map(([k,label])=>
+            {[["auction","Auction 3.5%"],["bazaar","Bazaar 1%"],["listed","Listed AH 2.5%"],["none","No Tax"],["under100m","Under 100m AH 3%"],["under10m","Under 10m AH 2%"]].map(([k,label])=>
               <button key={k} onClick={()=>setDefaultTax(k)} style={{padding:"6px 12px",borderRadius:"4px",cursor:"pointer",fontFamily:"inherit",fontSize:"11px",fontWeight:defaultTax===k?600:400,background:defaultTax===k?"#000":"#fff",color:defaultTax===k?"#fff":"#000",border:defaultTax===k?"2px solid #000":"2px solid #e2e8f0"}}>{label}</button>)}</div>
         </div>
         <div style={S.card}>
