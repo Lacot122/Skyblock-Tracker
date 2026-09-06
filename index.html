@@ -83,7 +83,7 @@ function App(){
   const[verifyError,setVerifyError]=useState("");
   const[verifyLoading,setVerifyLoading]=useState(false);
   const[toast,setToast]=useState(null);
-  const[ahAuctions,setAhAuctions]=useState([]);const[usedAuctionIds,setUsedAuctionIds]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);const[showTutorial,setShowTutorial]=useState(false);const[expandedAhId,setExpandedAhId]=useState(null);const[showChangelog,setShowChangelog]=useState(false);
+  const[ahAuctions,setAhAuctions]=useState([]);const[usedAuctionIds,setUsedAuctionIds]=useState([]);const[ahFullData,setAhFullData]=useState({active:[],sold:[],stats:{toCollect:0,ifAllSold:0,listedValue:0}});const[ahTabLoading,setAhTabLoading]=useState(false);const[showTutorial,setShowTutorial]=useState(false);const[expandedAhId,setExpandedAhId]=useState(null);const[showChangelog,setShowChangelog]=useState(false);const[coopNameInput,setCoopNameInput]=useState("");const[coopUuidCache,setCoopUuidCache]=useState({});
   const[ahLoading,setAhLoading]=useState(false);
   const[ahOpen,setAhOpen]=useState(false);
   const[ahFlipId,setAhFlipId]=useState(null);
@@ -109,7 +109,7 @@ function App(){
     {key:"fiveStars",label:"5 Stars",desc:"3,350 Wither Essence + 35k coins",bzIds:["ESSENCE_WITHER"],qtys:[3350],coinCost:35000,default:true}
   ];
   
-const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
+const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");const[coopPurses,setCoopPurses]=useState({});
   const saveTimer=useRef(null);
   const[data,setData]=useState(DEF),[tab,setTab]=useState("home"),[loaded,setLoaded]=useState(false);
   const[mcName,setMcName]=useState(""),[mcInput,setMcInput]=useState("");
@@ -273,7 +273,11 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const deleteCollection=(colId)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,collections:inf.collections.filter(c=>c.id!==colId)}})};
   const getWeeklyRate=(collections,weeksAgo)=>{if(collections.length===0)return 0;const sorted=[...collections].sort((a,b)=>a.date.localeCompare(b.date));const now=new Date();const windowEnd=new Date(now);windowEnd.setDate(windowEnd.getDate()-weeksAgo*7);const windowStart=new Date(windowEnd);windowStart.setDate(windowStart.getDate()-7);const ws=windowStart.toISOString().slice(0,10);const we=windowEnd.toISOString().slice(0,10);if(sorted.length<2){return sorted.filter(c=>c.date>ws&&c.date<=we).reduce((s,c)=>s+c.amount,0)}const daily={};for(let i=1;i<sorted.length;i++){const pD=new Date(sorted[i-1].date+"T12:00:00");const cD=new Date(sorted[i].date+"T12:00:00");const gap=Math.max(1,Math.round((cD-pD)/86400000));const rate=sorted[i].amount/gap;for(let d=0;d<gap;d++){const day=new Date(pD);day.setDate(day.getDate()+d+1);daily[day.toISOString().slice(0,10)]=(daily[day.toISOString().slice(0,10)]||0)+rate}}let total=0;for(let d=0;d<7;d++){const day=new Date(now);day.setDate(day.getDate()-d-weeksAgo*7);total+=daily[day.toISOString().slice(0,10)]||0}return total};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
-  const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuid="+mcUuid);const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
+  const resolveUuid=async(username)=>{try{const r=await fetch("https://api.mojang.com/users/profiles/minecraft/"+username);if(!r.ok)return null;const d=await r.json();return d.id}catch(e){return null}};
+  const addCoopMember=async()=>{const name=coopNameInput.trim();if(!name)return;if((data.coopMembers||[]).length>=3)return;const uuid=await resolveUuid(name);if(!uuid){alert("Could not find that Minecraft username");return}save({...data,coopMembers:[...(data.coopMembers||[]),{name,uuid}]});setCoopNameInput("")};
+  const removeCoopMember=(uuid)=>{save({...data,coopMembers:(data.coopMembers||[]).filter(m=>m.uuid!==uuid)})};
+  const getAuctionUuids=()=>{const uuids=[mcUuid];if(data.showCoopAuctions){(data.coopMembers||[]).forEach(m=>uuids.push(m.uuid))}return uuids.filter(Boolean).join(",")};
+  const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuids="+getAuctionUuids());const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
   const addAuctionSale=(flipId,price,auctionId)=>{const amt=price/1000000;save({...data,flips:data.flips.map(f=>f.id===flipId?{...f,sells:[...f.sells,{id:gid(),amount:amt,date:today(),type:"auction"}]}:f)});setUsedAuctionIds(prev=>[...prev,auctionId]);setAhAuctions(prev=>prev.filter(a=>a.auctionId!==auctionId));setAhOpen(false);setAhFlipId(null)};
 
   const startReset=()=>{setResetConfirm(true);setResetCountdown(5)};
@@ -288,7 +292,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const T=themes[theme]||themes.dark;
   
   const getSellTotal=(f)=>f.sells.reduce((s,x)=>s+x.amount,0);
-  const getTaxTotal=(f)=>f.sells.reduce((s,x)=>{const rate=x.type==="bazaar"?data.bzTaxRate:x.type==="none"?0:x.type==="listed"?0.025:data.taxRate;const flat=(x.type==="auction"||(!x.type&&rate===data.taxRate))?0.0552:x.type==="listed"?0.0552:0;return s+(x.amount*rate)+flat},0);
+  const getTaxTotal=(f)=>f.sells.reduce((s,x)=>{const rate=x.type==="bazaar"?data.bzTaxRate:x.type==="none"?0:x.type==="listed"?0.025:x.type==="under10m"?0.02:data.taxRate;const flat=x.type==="none"||x.type==="bazaar"?0:0.0552;return s+(x.amount*rate)+flat},0);
   const getProfit=(f)=>{const ts=getSellTotal(f);if(!ts)return null;return ts-f.buy-getTaxTotal(f)};
   const getDiscount=(f)=>{const ts=getSellTotal(f);if(!ts||!f.buy)return null;return((ts-f.buy)/ts*100)};
 
@@ -328,7 +332,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const availableMonths=useMemo(()=>{const set=new Set();dailyData.forEach(d=>{const mk=getMonthKey(d.date);if(mk)set.add(mk)});return Array.from(set).sort()},[dailyData]);
   const filteredDaily=useMemo(()=>{if(chartMonth==="all")return dailyData;return dailyData.filter(d=>getMonthKey(d.date)===chartMonth)},[dailyData,chartMonth]);
 
-  useEffect(()=>{if(tab==="auctions"&&mcUuid&&ahFullData.active.length===0&&ahFullData.sold.length===0)fetchAuctionTab();if(tab==="inferno"&&!bzPrices)fetchBazaar();if(tab==="active"&&mcUuid&&ahAuctions.length===0){fetch("/api/hypixel-auctions?uuid="+mcUuid).then(r=>r.json()).then(d=>{setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)))}).catch(()=>{})}},[tab]);
+  useEffect(()=>{if(tab==="auctions"&&data.showCoopAuctions&&(data.coopMembers||[]).length>0){(data.coopMembers||[]).forEach(m=>{fetch("/api/hypixel-profile?uuid="+m.uuid).then(r=>r.json()).then(d=>setCoopPurses(prev=>({...prev,[m.uuid]:d.purse||0}))).catch(()=>{})})}if(tab==="auctions"&&mcUuid&&ahFullData.active.length===0&&ahFullData.sold.length===0)fetchAuctionTab();if(tab==="inferno"&&!bzPrices)fetchBazaar();if(tab==="active"&&mcUuid&&ahAuctions.length===0){fetch("/api/hypixel-auctions?uuid="+mcUuid).then(r=>r.json()).then(d=>{setAhAuctions((d.sold||[]).filter(a=>a.soldAt&&a.soldAt>Date.now()-86400000&&!usedAuctionIds.includes(a.auctionId)))}).catch(()=>{})}},[tab]);
   const calcTax=calcSell?parseFloat(calcSell)*data.taxRate:0,calcRcv=calcSell?parseFloat(calcSell)-calcTax:0,calcMax=calcSell?calcRcv-(parseFloat(calcTarget)||0):0;
   const filterF=(list)=>{if(!search)return list;const s=search.toLowerCase();return list.filter(f=>f.item.toLowerCase().includes(s)||(f.notes||"").toLowerCase().includes(s))};
 
@@ -363,7 +367,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
   const Stat=({v,l,c})=><div style={S.stat}><div style={{fontSize:"19px",fontWeight:800,color:c}}>{v}</div><div style={S.sL}>{l}</div></div>;
 
   const tierColor=(t)=>{const m={COMMON:"#aaaaaa",UNCOMMON:"#55ff55",RARE:"#5555ff",EPIC:"#aa00aa",LEGENDARY:"#ffaa00",MYTHIC:"#ff55ff",DIVINE:"#00bfff",SPECIAL:"#ff5555",VERY_SPECIAL:"#ff5555",SUPREME:"#aa0000"};return m[t]||"#aaaaaa"};
-  const taxLabel=(t)=>t==="bazaar"?"BZ 1%":t==="none"?"No tax":t==="listed"?"Listed 2.5%":"AH 3.5%";
+  const taxLabel=(t)=>t==="bazaar"?"BZ 1%":t==="none"?"No tax":t==="listed"?"Listed 2.5%":t==="under10m"?"Under 10m 2%":"AH 3.5%";
   const taxColor=(t)=>t==="bazaar"?"#60a5fa":t==="none"?"#94a3b8":t==="listed"?"#e879f9":"#fcd34d";
 
   const renderFlip=(f,isActive)=>{
@@ -422,9 +426,9 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
       {adding&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #60a5fa30",flexWrap:"wrap"}}>
         <input style={{...S.inp,width:"100px"}} type="number" value={addSaleAmt} onChange={e=>setAddSaleAmt(e.target.value)} placeholder="Amount" autoFocus onKeyDown={e=>e.key==="Enter"&&addSale(f.id)} />
         <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
-          {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"]].map(([k,label,c,bg])=>
+          {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
             <button key={k} onClick={()=>setAddSaleType(k)} style={{padding:"5px 8px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:addSaleType===k?bg:"#1a1a35",color:addSaleType===k?c:"#64748b",fontWeight:addSaleType===k?700:400}}>{label}</button>)}</div>
-        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%":"0%"}</span>
+        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%":addSaleType==="under10m"?"2%+fee":"0%"}</span>
         <button onClick={()=>addSale(f.id)} style={S.bg}>Add</button><button onClick={()=>{setAddSaleId(null);setAddSaleAmt("")}} style={S.bm}>Cancel</button></div>)}
       {/* Relist form */}
       {relistFlipId===f.id&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #e879f930",flexWrap:"wrap"}}>
@@ -578,7 +582,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
                 <span style={{fontSize:"10px",color:"#475569"}}>×</span>
                 <input style={{...S.inp,width:"100px"}} type="number" value={invSaleAmt} onChange={e=>setInvSaleAmt(e.target.value)} placeholder="Total sell price" autoFocus onKeyDown={e=>e.key==="Enter"&&addInvSale(inv.id)} />
                 <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
-                  {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"]].map(([k,label,c,bg])=>
+                  {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
                     <button key={k} onClick={()=>setInvSaleType(k)} style={{padding:"4px 7px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:invSaleType===k?bg:"#1a1a35",color:invSaleType===k?c:"#64748b",fontWeight:invSaleType===k?700:400}}>{label}</button>)}
                 </div>
                 <button onClick={()=>addInvSale(inv.id)} style={S.bg}>Sell</button><button onClick={()=>{setInvSaleId(null);setInvSaleAmt("")}} style={S.bm}>Cancel</button>
@@ -964,17 +968,17 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
             <button onClick={fetchAuctionTab} style={{...S.bg,fontSize:"11px"}}>{ahTabLoading?"Refreshing...":"↻ Refresh"}</button></div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"12px"}}>
             <Stat v={fm(ahFullData.stats.listedValue/1000000)} l="Listed Value" c="#a78bfa" />
-            <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99)} l="Projected Purse" c="#22d3ee" />
+            <Stat v={fm((purse||0)/1000000+(data.showCoopAuctions?Object.values(coopPurses).reduce((s,v)=>s+v,0)/1000000:0)+ahFullData.stats.listedValue/1000000*0.99)} l="Projected Purse" c="#22d3ee" />
             <Stat v={fm((purse||0)/1000000+ahFullData.stats.listedValue/1000000*0.99+Object.values(data.craftInventory||{}).reduce((s,v)=>s+(v.qty||0)*(v.perUnit||0),0))} l="Projected With Bulk Inv" c="#a78bfa" /></div>
 
           <div style={S.card}><div style={S.cT}>Active Auctions ({ahFullData.active.length})</div>
             {ahFullData.active.length===0&&<div style={{color:T.textDim,textAlign:"center",padding:"16px",fontSize:"11px"}}>No active auctions</div>}
-            {ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";const isExp=expandedAhId===a.auctionId;
+            {ahFullData.active.map(a=>{const timeLeft=Math.max(0,a.endsAt-Date.now());const mins=Math.floor(timeLeft/60000);const hrs=Math.floor(mins/60);const timeStr=hrs>0?hrs+"h "+mins%60+"m":mins+"m";const isExp=expandedAhId===a.auctionId;const ownerName=a.ownerUuid&&a.ownerUuid!==mcUuid?((data.coopMembers||[]).find(m=>m.uuid===a.ownerUuid)?.name):null;
               return<div key={a.auctionId} style={{borderBottom:"1px solid "+T.cardBorder}}>
                 <div onClick={()=>setExpandedAhId(isExp?null:a.auctionId)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",cursor:"pointer"}}>
                   <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
                     <div style={{width:"4px",height:"28px",borderRadius:"2px",background:tierColor(a.tier)}}></div>
-                    <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}</div>
+                    <div><div style={{fontWeight:600,color:tierColor(a.tier),fontSize:"12px"}}>{a.itemName}{ownerName&&<span style={{fontSize:"9px",color:T.textDim,fontWeight:400,marginLeft:"6px"}}>({ownerName})</span>}</div>
                       <div style={{fontSize:"10px",color:T.textDim}}>{a.bin?"BIN":"Auction"}</div></div></div>
                   <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
                     <div style={{fontWeight:700,color:T.text,fontSize:"13px"}}>{fm(a.price/1000000)}</div>
@@ -1028,7 +1032,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
         <div style={S.card}>
           <div style={S.cT}>Default Tax Type</div>
           <div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"14px"}}>
-            {[["auction","Auction 3.5%"],["bazaar","Bazaar 1%"],["listed","Listed AH 2.5%"],["none","No Tax"]].map(([k,label])=>
+            {[["auction","Auction 3.5%"],["bazaar","Bazaar 1%"],["listed","Listed AH 2.5%"],["none","No Tax"],["under10m","Under 10m AH 2%"]].map(([k,label])=>
               <button key={k} onClick={()=>setDefaultTax(k)} style={{padding:"6px 12px",borderRadius:"4px",cursor:"pointer",fontFamily:"inherit",fontSize:"11px",fontWeight:defaultTax===k?600:400,background:defaultTax===k?"#000":"#fff",color:defaultTax===k?"#fff":"#000",border:defaultTax===k?"2px solid #000":"2px solid #e2e8f0"}}>{label}</button>)}</div>
         </div>
         <div style={S.card}>
@@ -1099,6 +1103,22 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");
               <span style={{fontSize:"11px",color:T.text}}>{l}</span>
               <button onClick={()=>save({...data,hiddenTabs:{...(data.hiddenTabs||{}),[k]:!hidden}})} style={{padding:"3px 10px",border:"1px solid "+(hidden?"#f8717140":"#4ade8040"),borderRadius:"4px",background:"transparent",color:hidden?"#f87171":"#4ade80",fontFamily:"inherit",fontSize:"10px",cursor:"pointer"}}>{hidden?"Hidden":"Visible"}</button>
             </div>})}
+        </div>
+        <div style={S.card}>
+          <div style={S.cT}>Coop Auctions</div>
+          <div style={{fontSize:"10px",color:T.textDim,marginBottom:"8px"}}>Show auctions and purse from up to 3 coop members alongside your own</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
+            <span style={{fontSize:"11px",color:T.text}}>Show Coop Auctions</span>
+            <button onClick={()=>save({...data,showCoopAuctions:!data.showCoopAuctions})} style={{padding:"4px 12px",border:"1px solid "+(data.showCoopAuctions?"#4ade8040":"#f8717140"),borderRadius:"4px",background:"transparent",color:data.showCoopAuctions?"#4ade80":"#f87171",fontFamily:"inherit",fontSize:"10px",cursor:"pointer"}}>{data.showCoopAuctions?"On":"Off"}</button>
+          </div>
+          {(data.coopMembers||[]).map(m=><div key={m.uuid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid "+T.cardBorder+"40"}}>
+            <span style={{fontSize:"11px",color:T.text}}>{m.name}</span>
+            <button onClick={()=>removeCoopMember(m.uuid)} style={{...S.bs,color:"#f8717140",fontSize:"9px"}}>×</button>
+          </div>)}
+          {(data.coopMembers||[]).length<3&&<div style={{display:"flex",gap:"6px",marginTop:"8px"}}>
+            <input style={{...S.inp,flex:1}} value={coopNameInput} onChange={e=>setCoopNameInput(e.target.value)} placeholder="Minecraft username" onKeyDown={e=>e.key==="Enter"&&addCoopMember()} />
+            <button onClick={addCoopMember} style={S.bg}>Add</button>
+          </div>}
         </div>
         <div style={S.card}>
           <div style={S.cT}>Theme</div>
