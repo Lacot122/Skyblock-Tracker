@@ -273,8 +273,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
   const deleteCollection=(colId)=>{const inf=data.inferno||{fuelCount:0,fuelCost:0,collections:[]};save({...data,inferno:{...inf,collections:inf.collections.filter(c=>c.id!==colId)}})};
   const getWeeklyRate=(collections,weeksAgo)=>{if(collections.length===0)return 0;const sorted=[...collections].sort((a,b)=>a.date.localeCompare(b.date));const now=new Date();const windowEnd=new Date(now);windowEnd.setDate(windowEnd.getDate()-weeksAgo*7);const windowStart=new Date(windowEnd);windowStart.setDate(windowStart.getDate()-7);const ws=windowStart.toISOString().slice(0,10);const we=windowEnd.toISOString().slice(0,10);if(sorted.length<2){return sorted.filter(c=>c.date>ws&&c.date<=we).reduce((s,c)=>s+c.amount,0)}const daily={};for(let i=1;i<sorted.length;i++){const pD=new Date(sorted[i-1].date+"T12:00:00");const cD=new Date(sorted[i].date+"T12:00:00");const gap=Math.max(1,Math.round((cD-pD)/86400000));const rate=sorted[i].amount/gap;for(let d=0;d<gap;d++){const day=new Date(pD);day.setDate(day.getDate()+d+1);daily[day.toISOString().slice(0,10)]=(daily[day.toISOString().slice(0,10)]||0)+rate}}let total=0;for(let d=0;d<7;d++){const day=new Date(now);day.setDate(day.getDate()-d-weeksAgo*7);total+=daily[day.toISOString().slice(0,10)]||0}return total};
   const fetchPurse=async()=>{if(!mcUuid)return;try{const res=await fetch("/api/hypixel-profile?uuid="+mcUuid);const d=await res.json();setPurse(d.purse||0)}catch(e){}};
-  const resolveUuid=async(username)=>{try{const r=await fetch("https://api.mojang.com/users/profiles/minecraft/"+username);if(!r.ok)return null;const d=await r.json();return d.id}catch(e){return null}};
-  const addCoopMember=async()=>{const name=coopNameInput.trim();if(!name)return;if((data.coopMembers||[]).length>=3)return;const uuid=await resolveUuid(name);if(!uuid){alert("Could not find that Minecraft username");return}save({...data,coopMembers:[...(data.coopMembers||[]),{name,uuid}]});setCoopNameInput("")};
+  const addCoopMember=()=>{const uuid=coopNameInput.trim().replace(/-/g,"");if(!uuid||uuid.length!==32){alert("Please enter a valid 32-character UUID (no dashes)");return}if((data.coopMembers||[]).length>=3)return;save({...data,coopMembers:[...(data.coopMembers||[]),{name:uuid.slice(0,8),uuid}]});setCoopNameInput("")};
   const removeCoopMember=(uuid)=>{save({...data,coopMembers:(data.coopMembers||[]).filter(m=>m.uuid!==uuid)})};
   const getAuctionUuids=()=>{const uuids=[mcUuid];if(data.showCoopAuctions){(data.coopMembers||[]).forEach(m=>uuids.push(m.uuid))}return uuids.filter(Boolean).join(",")};
   const fetchAuctionTab=async()=>{if(!mcUuid)return;setAhTabLoading(true);try{const res=await fetch("/api/hypixel-auctions?uuids="+getAuctionUuids());const d=await res.json();setAhFullData({active:d.active||[],sold:d.sold||[],stats:{toCollect:(d.stats&&d.stats.toCollect)||0,ifAllSold:(d.stats&&d.stats.ifAllSold)||0,listedValue:(d.stats&&d.stats.listedValue)||0}})}catch(e){console.error("AH fetch error:",e)}setAhTabLoading(false)};
@@ -355,7 +354,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
         {discordInfo&&discordInfo.avatar&&<div style={{display:"flex",alignItems:"center",gap:"8px",justifyContent:"center",marginBottom:"16px"}}>
           <img src={discordInfo.avatar} style={{width:"24px",height:"24px",borderRadius:"50%"}} /><span style={{color:T.text,fontWeight:600}}>{discordInfo.username}</span></div>}
         <div style={{display:"flex",gap:"8px",justifyContent:"center",marginBottom:"12px"}}>
-          <input style={{...S.inp,width:"200px",textAlign:"center"}} value={verifyInput} onChange={e=>setVerifyInput(e.target.value)} placeholder="Minecraft username" onKeyDown={e=>e.key==="Enter"&&verifyMc()} disabled={verifyLoading} />
+          <input style={{...S.inp,width:"200px",textAlign:"center"}} value={verifyInput} onChange={e=>setVerifyInput(e.target.value)} placeholder="Minecraft UUID (no dashes)" onKeyDown={e=>e.key==="Enter"&&verifyMc()} disabled={verifyLoading} />
           <button onClick={verifyMc} disabled={verifyLoading||!verifyInput} style={{...S.bMain,opacity:verifyLoading?0.5:1}}>{verifyLoading?"Checking...":"Verify"}</button></div>
         {verifyError&&<div style={{color:"#f87171",fontSize:"11px",marginTop:"8px"}}>{verifyError}</div>}
         <div style={{color:T.textFaint,fontSize:"10px",marginTop:"16px"}}>Make sure you have linked your Discord in Hypixel using /discord link</div>
@@ -428,7 +427,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
         <div style={{display:"flex",borderRadius:"4px",overflow:"hidden",border:"1px solid #2d2d5e"}}>
           {[["auction","Auction","#fcd34d","#1c1600"],["bazaar","Bazaar","#60a5fa","#0a1628"],["listed","Listed AH","#e879f9","#1a0828"],["none","No Tax","#94a3b8","#1a1a35"],["under100m","Under 100m AH","#22d3ee","#001c1c"],["under10m","Under 10m AH","#fb923c","#1c1000"]].map(([k,label,c,bg])=>
             <button key={k} onClick={()=>setAddSaleType(k)} style={{padding:"5px 8px",border:"none",fontFamily:"inherit",fontSize:"10px",cursor:"pointer",background:addSaleType===k?bg:"#1a1a35",color:addSaleType===k?c:"#64748b",fontWeight:addSaleType===k?700:400}}>{label}</button>)}</div>
-        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%":addSaleType==="under100m"?"3%+fee":addSaleType==="under10m"?"2%+fee":"0%"}</span>
+        <span style={{fontSize:"9px",color:"#475569"}}>{addSaleType==="auction"?"3.5%+fee":addSaleType==="bazaar"?"1%":addSaleType==="listed"?"2.5%+fee":addSaleType==="under100m"?"3%+fee":addSaleType==="under10m"?"2%+fee":"0%"}</span>
         <button onClick={()=>addSale(f.id)} style={S.bg}>Add</button><button onClick={()=>{setAddSaleId(null);setAddSaleAmt("")}} style={S.bm}>Cancel</button></div>)}
       {/* Relist form */}
       {relistFlipId===f.id&&(<div style={{padding:"0 12px 8px 12px",display:"flex",gap:"6px",alignItems:"center",paddingLeft:"20px",borderLeft:"2px solid #e879f930",flexWrap:"wrap"}}>
@@ -1116,7 +1115,7 @@ const[purse,setPurse]=useState(null);const[apiError,setApiError]=useState("");co
             <button onClick={()=>removeCoopMember(m.uuid)} style={{...S.bs,color:"#f8717140",fontSize:"9px"}}>×</button>
           </div>)}
           {(data.coopMembers||[]).length<3&&<div style={{display:"flex",gap:"6px",marginTop:"8px"}}>
-            <input style={{...S.inp,flex:1}} value={coopNameInput} onChange={e=>setCoopNameInput(e.target.value)} placeholder="Minecraft username" onKeyDown={e=>e.key==="Enter"&&addCoopMember()} />
+            <input style={{...S.inp,flex:1}} value={coopNameInput} onChange={e=>setCoopNameInput(e.target.value)} placeholder="Minecraft UUID (no dashes)" onKeyDown={e=>e.key==="Enter"&&addCoopMember()} />
             <button onClick={addCoopMember} style={S.bg}>Add</button>
           </div>}
         </div>
